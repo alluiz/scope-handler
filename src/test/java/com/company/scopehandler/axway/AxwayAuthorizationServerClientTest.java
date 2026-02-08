@@ -47,7 +47,8 @@ class AxwayAuthorizationServerClientTest {
                 settings(server.url("/").toString()),
                 new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
                 Duration.ofSeconds(5),
-                Retry.max(0)
+                Retry.max(0),
+                new AxwayRequestLogger(tempDir.resolve("axway.log"))
         );
 
         OperationOutcome outcome = client.associateScope("client-1", "scope-1");
@@ -75,7 +76,8 @@ class AxwayAuthorizationServerClientTest {
                 settings(server.url("/").toString()),
                 new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
                 Duration.ofSeconds(5),
-                Retry.max(0)
+                Retry.max(0),
+                new AxwayRequestLogger(tempDir.resolve("axway.log"))
         );
 
         OperationOutcome outcome = client.dissociateScope("client-1", "scope-1");
@@ -101,7 +103,8 @@ class AxwayAuthorizationServerClientTest {
                 settings(server.url("/").toString()),
                 new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
                 Duration.ofSeconds(5),
-                Retry.max(0)
+                Retry.max(0),
+                new AxwayRequestLogger(tempDir.resolve("axway.log"))
         );
 
         OperationOutcome outcome = client.dissociateScope("client-1", "scope-1");

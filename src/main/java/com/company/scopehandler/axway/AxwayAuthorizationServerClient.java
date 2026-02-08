@@ -27,6 +27,7 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
     private final String baseUrl;
     private final String authHeader;
     private final AxwayCacheStore cacheStore;
+    private final AxwayRequestLogger requestLogger;
     private final WebClient webClient;
     private final Duration requestTimeout;
     private final Retry retrySpec;
@@ -34,16 +35,22 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
     public AxwayAuthorizationServerClient(AuthorizationServerSettings settings,
                                           AxwayCacheStore cacheStore,
                                           Duration requestTimeout,
-                                          Retry retrySpec) {
+                                          Retry retrySpec,
+                                          AxwayRequestLogger requestLogger) {
         this.baseUrl = normalizeBaseUrl(settings.getBaseUrl());
         this.authHeader = basicAuth(settings.getUsername(), settings.getPassword());
         this.cacheStore = cacheStore;
         this.requestTimeout = requestTimeout;
         this.retrySpec = retrySpec;
+        this.requestLogger = requestLogger;
         this.webClient = WebClient.builder()
                 .baseUrl(this.baseUrl)
                 .defaultHeader("Authorization", authHeader)
                 .defaultHeader("Accept", "application/json")
+                .filter((request, next) -> {
+                    requestLogger.logRequest(request);
+                    return next.exchange(request);
+                })
                 .build();
     }
 
@@ -139,25 +146,42 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
 
     private <T> Mono<T> toDto(ClientResponse response, Class<T> dtoClass) {
         if (response.statusCode().is2xxSuccessful()) {
-            return response.bodyToMono(dtoClass);
+            return response.bodyToMono(dtoClass)
+                    .doOnNext(body -> requestLogger.logResponse(response.request(), response, "<dto>"));
         }
-        return response.bodyToMono(Void.class)
-                .then(Mono.error(new AxwayHttpException(response.rawStatusCode())));
+        return response.bodyToMono(String.class)
+                .defaultIfEmpty("")
+                .flatMap(body -> {
+                    requestLogger.logResponse(response.request(), response, body);
+                    return Mono.error(new AxwayHttpException(response.rawStatusCode()));
+                });
     }
 
     private Mono<AxwayResponse> toDefaultResponse(ClientResponse response) {
         if (response.statusCode().is2xxSuccessful()) {
-            return response.bodyToMono(Void.class)
-                    .thenReturn(new AxwayResponse(response.rawStatusCode()));
+            return response.bodyToMono(String.class)
+                    .defaultIfEmpty("")
+                    .map(body -> {
+                        requestLogger.logResponse(response.request(), response, body);
+                        return new AxwayResponse(response.rawStatusCode());
+                    });
         }
-        return response.bodyToMono(Void.class)
-                .then(Mono.error(new AxwayHttpException(response.rawStatusCode())));
+        return response.bodyToMono(String.class)
+                .defaultIfEmpty("")
+                .flatMap(body -> {
+                    requestLogger.logResponse(response.request(), response, body);
+                    return Mono.error(new AxwayHttpException(response.rawStatusCode()));
+                });
     }
 
     private Mono<AxwayResponse> toPostResponse(ClientResponse response) {
         if (response.rawStatusCode() == 409) {
-            return response.bodyToMono(Void.class)
-                    .thenReturn(new AxwayResponse(409));
+            return response.bodyToMono(String.class)
+                    .defaultIfEmpty("")
+                    .map(body -> {
+                        requestLogger.logResponse(response.request(), response, body);
+                        return new AxwayResponse(409);
+                    });
         }
         return toDefaultResponse(response);
     }

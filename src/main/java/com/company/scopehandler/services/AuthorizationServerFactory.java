@@ -4,6 +4,7 @@ import com.company.scopehandler.config.AppConfig;
 import com.company.scopehandler.config.AuthorizationServerSettings;
 import com.company.scopehandler.ports.AuthorizationServerClient;
 import com.company.scopehandler.axway.AxwayAuthorizationServerClient;
+import com.company.scopehandler.axway.AxwayRequestLogger;
 import com.company.scopehandler.axway.cache.AxwayCacheStore;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -19,7 +20,8 @@ public final class AuthorizationServerFactory {
                     settings,
                     buildAxwayCache(cacheDir, asName, environment),
                     buildAxwayTimeout(config, asName),
-                    buildAxwayRetry(config, asName)
+                    buildAxwayRetry(config, asName),
+                    buildAxwayLogger(config, cacheDir, asName, environment)
             );
             default -> throw new IllegalArgumentException("Authorization Server nao suportado: " + asName);
         };
@@ -46,5 +48,11 @@ public final class AuthorizationServerFactory {
         };
         return Retry.backoff(attempts, Duration.ofMillis(backoffMs))
                 .filter(retryFilter);
+    }
+
+    private AxwayRequestLogger buildAxwayLogger(AppConfig config, Path cacheDir, String asName, String environment) {
+        String fileName = config.get("as." + asName + ".logFile", "axway-requests-" + asName + "-" + environment + ".log");
+        Path file = cacheDir.resolve(fileName);
+        return new AxwayRequestLogger(file);
     }
 }
