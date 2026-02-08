@@ -1,6 +1,7 @@
 package com.company.scopehandler.providers.axway;
 
 import com.company.scopehandler.api.config.AuthorizationServerSettings;
+import com.company.scopehandler.cli.utils.HttpRequestLogger;
 import com.company.scopehandler.providers.axway.dto.ApplicationDto;
 import com.company.scopehandler.providers.axway.dto.OAuthAppScopeDto;
 
@@ -20,13 +21,13 @@ public final class AxwayAuthorizationServerClient {
 
     private final String baseUrl;
     private final String authHeader;
-    private final AxwayRequestLogger requestLogger;
+    private final HttpRequestLogger requestLogger;
     private final WebClient webClient;
     private final Duration requestTimeout;
 
     public AxwayAuthorizationServerClient(AuthorizationServerSettings settings,
                                           Duration requestTimeout,
-                                          AxwayRequestLogger requestLogger) {
+                                          HttpRequestLogger requestLogger) {
         this.baseUrl = normalizeBaseUrl(settings.getBaseUrl());
         this.authHeader = basicAuth(settings.getUsername(), settings.getPassword());
         this.requestTimeout = requestTimeout;

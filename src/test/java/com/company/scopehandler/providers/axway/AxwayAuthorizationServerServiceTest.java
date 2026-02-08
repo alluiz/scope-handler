@@ -3,6 +3,7 @@ package com.company.scopehandler.providers.axway;
 import com.company.scopehandler.providers.axway.cache.AxwayCacheStore;
 import com.company.scopehandler.api.config.AuthorizationServerSettings;
 import com.company.scopehandler.api.domain.OperationOutcome;
+import com.company.scopehandler.cli.utils.HttpRequestLogger;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.mockwebserver.MockWebServer;
@@ -45,7 +46,7 @@ class AxwayAuthorizationServerServiceTest {
         AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(
                 settings(server.url("/").toString()),
                 Duration.ofSeconds(5),
-                new AxwayRequestLogger(tempDir.resolve("axway.log"))
+                new HttpRequestLogger(tempDir.resolve("axway.log"))
         );
         AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
                 rpcClient,
@@ -76,7 +77,7 @@ class AxwayAuthorizationServerServiceTest {
         AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(
                 settings(server.url("/").toString()),
                 Duration.ofSeconds(5),
-                new AxwayRequestLogger(tempDir.resolve("axway.log"))
+                new HttpRequestLogger(tempDir.resolve("axway.log"))
         );
         AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
                 rpcClient,
@@ -105,7 +106,7 @@ class AxwayAuthorizationServerServiceTest {
         AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(
                 settings(server.url("/").toString()),
                 Duration.ofSeconds(5),
-                new AxwayRequestLogger(tempDir.resolve("axway.log"))
+                new HttpRequestLogger(tempDir.resolve("axway.log"))
         );
         AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
                 rpcClient,

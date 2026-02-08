@@ -3,6 +3,7 @@ package com.company.scopehandler.providers.axway;
 import com.company.scopehandler.api.config.AppConfig;
 import com.company.scopehandler.api.config.AuthorizationServerSettings;
 import com.company.scopehandler.api.ports.AuthorizationServerService;
+import com.company.scopehandler.cli.utils.HttpRequestLogger;
 import com.company.scopehandler.providers.axway.cache.AxwayCacheStore;
 
 import java.nio.file.Path;
@@ -14,7 +15,7 @@ public final class AxwayClientFactory {
         AuthorizationServerSettings settings = AuthorizationServerSettings.from(config, asName, environment);
         AxwayCacheStore cacheStore = buildAxwayCache(cacheDir, asName, environment);
         Duration timeout = buildAxwayTimeout(config, asName);
-        AxwayRequestLogger logger = buildAxwayLogger(config, cacheDir, asName, environment);
+        HttpRequestLogger logger = buildAxwayLogger(config, cacheDir, asName, environment);
         AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(
                 settings,
                 timeout,
@@ -33,9 +34,9 @@ public final class AxwayClientFactory {
         return Duration.ofSeconds(seconds);
     }
 
-    private AxwayRequestLogger buildAxwayLogger(AppConfig config, Path cacheDir, String asName, String environment) {
+    private HttpRequestLogger buildAxwayLogger(AppConfig config, Path cacheDir, String asName, String environment) {
         String fileName = config.get("as." + asName + ".logFile", "axway-requests-" + asName + "-" + environment + ".log");
         Path file = cacheDir.resolve(fileName);
-        return new AxwayRequestLogger(file);
+        return new HttpRequestLogger(file);
     }
 }

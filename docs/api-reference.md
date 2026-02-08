@@ -110,7 +110,7 @@ AuthorizationServerFactory factory = AuthorizationServerFactory.builder()
             new AxwayAuthorizationServerClient(
                 axwaySettings,
                 Duration.ofSeconds(30),
-                new AxwayRequestLogger(Path.of("/tmp/cache/axway.log"))
+                new HttpRequestLogger(Path.of("/tmp/cache/axway.log"))
             ),
             new AxwayCacheStore(Path.of("/tmp/cache/axway.json"), new ObjectMapper())
         ))
