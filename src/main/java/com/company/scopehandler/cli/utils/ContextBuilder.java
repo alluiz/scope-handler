@@ -1,4 +1,4 @@
-package com.company.scopehandler.providers.axway;
+package com.company.scopehandler.cli.utils;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

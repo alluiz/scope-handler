@@ -138,7 +138,7 @@ public final class ScopeBatchApp implements Callable<Integer> {
         AuthorizationServerFactory registry = new RegistryService(
                 new MockClientFactory(),
                 new AxwayClientFactory()
-        ).build(config, resolvedEnv, resolvedAuditDir.resolve("cache"));
+        ).build(config, resolvedEnv, resolvedAuditDir.resolve("cache"), debug);
         AuthorizationServerService asClient = registry.create(resolvedAsName);
         ModeStrategy strategy = new ModeStrategyFactory().create(parsedMode, asClient, createScope);
 

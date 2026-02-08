@@ -7,7 +7,7 @@ import com.company.scopehandler.api.ports.AuthorizationServerService;
 public final class MockClientFactory {
     public AuthorizationServerService build(AppConfig config, String environment) {
         AuthorizationServerSettings settings = AuthorizationServerSettings.from(config, "mock", environment);
-        MockAuthorizationServerService rpcClient = new MockAuthorizationServerService(settings);
+        MockAuthorizationServerClient rpcClient = new MockAuthorizationServerClient(settings);
         return new MockAuthorizationServerService(rpcClient);
     }
 }

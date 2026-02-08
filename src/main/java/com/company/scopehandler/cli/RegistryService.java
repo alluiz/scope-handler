@@ -17,10 +17,10 @@ public final class RegistryService {
         this.axwayFactory = axwayFactory;
     }
 
-    public AuthorizationServerFactory build(AppConfig config, String environment, Path cacheDir) {
+    public AuthorizationServerFactory build(AppConfig config, String environment, Path cacheDir, boolean debug) {
         return AuthorizationServerFactory.builder()
                 .register("mock", () -> mockFactory.build(config, environment))
-                .register("axway", () -> axwayFactory.build(config, environment, cacheDir))
+                .register("axway", () -> axwayFactory.build(config, environment, cacheDir, debug))
                 .build();
     }
 }

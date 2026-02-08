@@ -3,7 +3,8 @@ package com.company.scopehandler.providers.axway;
 import com.company.scopehandler.providers.axway.cache.AxwayCacheStore;
 import com.company.scopehandler.api.config.AuthorizationServerSettings;
 import com.company.scopehandler.api.domain.OperationOutcome;
-import com.company.scopehandler.cli.utils.HttpRequestLogger;
+import com.company.scopehandler.cli.utils.http.HttpRequestLogger;
+import com.company.scopehandler.cli.utils.http.HttpWebClientFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.mockwebserver.MockWebServer;
@@ -43,10 +44,16 @@ class AxwayAuthorizationServerServiceTest {
                 .whenGet("/api/portal/v1.2/applications/oauthclient/client-1", okJson("{\"id\":\"app-1\"}"))
                 .whenPost("/api/portal/v1.2/applications/app-1/scope", conflictJson("conflict")));
 
+        AuthorizationServerSettings asSettings = settings(server.url("/").toString());
+        HttpRequestLogger logger = new HttpRequestLogger(tempDir.resolve("axway.log"));
+        var baseClient = HttpWebClientFactory.build(logger);
+        var webClient = baseClient.mutate()
+                .baseUrl(asSettings.getBaseUrl())
+                .defaultHeader("Authorization", basicAuth(asSettings.getUsername(), asSettings.getPassword()))
+                .defaultHeader("Accept", "application/json").build();
         AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(
-                settings(server.url("/").toString()),
-                Duration.ofSeconds(5),
-                new HttpRequestLogger(tempDir.resolve("axway.log"))
+                webClient,
+                Duration.ofSeconds(5)
         );
         AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
                 rpcClient,
@@ -74,10 +81,16 @@ class AxwayAuthorizationServerServiceTest {
                 .whenGet("/api/portal/v1.2/applications/oauthclient/client-1", okJson("{\"id\":\"app-1\"}"))
                 .whenGet("/api/portal/v1.2/applications/app-1/scope", okJson("[]")));
 
+        AuthorizationServerSettings asSettings = settings(server.url("/").toString());
+        HttpRequestLogger logger = new HttpRequestLogger(tempDir.resolve("axway.log"));
+        var baseClient = HttpWebClientFactory.build(logger);
+        var webClient = baseClient.mutate()
+                .baseUrl(asSettings.getBaseUrl())
+                .defaultHeader("Authorization", basicAuth(asSettings.getUsername(), asSettings.getPassword()))
+                .defaultHeader("Accept", "application/json").build();
         AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(
-                settings(server.url("/").toString()),
-                Duration.ofSeconds(5),
-                new HttpRequestLogger(tempDir.resolve("axway.log"))
+                webClient,
+                Duration.ofSeconds(5)
         );
         AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
                 rpcClient,
@@ -103,10 +116,16 @@ class AxwayAuthorizationServerServiceTest {
                 .whenGet("/api/portal/v1.2/applications/app-1/scope", okJson("[{\"id\":\"scope-1-id\",\"scope\":\"scope-1\"}]"))
                 .whenDelete("/api/portal/v1.2/applications/app-1/scope/scope-1-id", okJson("")));
 
+        AuthorizationServerSettings asSettings = settings(server.url("/").toString());
+        HttpRequestLogger logger = new HttpRequestLogger(tempDir.resolve("axway.log"));
+        var baseClient = HttpWebClientFactory.build(logger);
+        var webClient = baseClient.mutate()
+                .baseUrl(asSettings.getBaseUrl())
+                .defaultHeader("Authorization", basicAuth(asSettings.getUsername(), asSettings.getPassword()))
+                .defaultHeader("Accept", "application/json").build();
         AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(
-                settings(server.url("/").toString()),
-                Duration.ofSeconds(5),
-                new HttpRequestLogger(tempDir.resolve("axway.log"))
+                webClient,
+                Duration.ofSeconds(5)
         );
         AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
                 rpcClient,
@@ -134,6 +153,11 @@ class AxwayAuthorizationServerServiceTest {
             setProperty("as.axway.auth.username", "user");
             setProperty("as.axway.auth.password", "pass");
         }}), "axway", "dev");
+    }
+
+    private String basicAuth(String username, String password) {
+        String credentials = username + ":" + password;
+        return "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes());
     }
 
     private RecordedRequest take() {

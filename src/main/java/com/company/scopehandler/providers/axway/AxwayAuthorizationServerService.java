@@ -2,6 +2,7 @@ package com.company.scopehandler.providers.axway;
 
 import com.company.scopehandler.api.domain.OperationOutcome;
 import com.company.scopehandler.api.ports.AuthorizationServerService;
+import com.company.scopehandler.cli.utils.ContextBuilder;
 import com.company.scopehandler.providers.axway.AxwayAuthorizationServerClient;
 import com.company.scopehandler.providers.axway.cache.AxwayCacheStore;
 import com.company.scopehandler.providers.axway.dto.ApplicationDto;

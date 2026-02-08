@@ -1,4 +1,4 @@
-package com.company.scopehandler.cli.utils;
+package com.company.scopehandler.cli.utils.http;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,13 +20,24 @@ import java.util.UUID;
 
 public final class HttpRequestLogger implements AutoCloseable {
     private final Logger logger;
-    private final Appender appender;
+    private final Appender fileAppender;
     private final Path file;
 
     public HttpRequestLogger(Path file) {
-        this.file = file;
-        this.logger = createLogger(file);
-        this.appender = findAppender();
+        this(file, false);
+    }
+
+    public HttpRequestLogger(Path file, boolean debug) {
+        this.file = java.util.Objects.requireNonNull(file, "file");
+        if (this.file.getParent() != null) {
+            try {
+                java.nio.file.Files.createDirectories(this.file.getParent());
+            } catch (java.io.IOException e) {
+                throw new IllegalStateException("Failed to create log directory", e);
+            }
+        }
+        this.logger = createLogger(file, debug);
+        this.fileAppender = findAppender(logger, "-file");
     }
 
     public void logRequest(ClientRequest request, Map<String, String> context) {
@@ -84,12 +95,12 @@ public final class HttpRequestLogger implements AutoCloseable {
 
     @Override
     public void close() {
-        if (appender != null) {
-            appender.stop();
+        if (fileAppender != null) {
+            fileAppender.stop();
         }
     }
 
-    private Logger createLogger(Path file) {
+    private Logger createLogger(Path file, boolean debug) {
         LoggerContext context = LoggerContext.getContext(false);
         Configuration config = context.getConfiguration();
         String loggerName = "http-request-" + UUID.randomUUID();
@@ -101,7 +112,7 @@ public final class HttpRequestLogger implements AutoCloseable {
 
         FileAppender fileAppender = FileAppender.newBuilder()
                 .withFileName(file.toAbsolutePath().toString())
-                .withName(loggerName + "-appender")
+                .withName(loggerName + "-file")
                 .withLayout(layout)
                 .withAppend(true)
                 .withImmediateFlush(true)
@@ -109,19 +120,33 @@ public final class HttpRequestLogger implements AutoCloseable {
                 .build();
         fileAppender.start();
 
-        LoggerConfig loggerConfig = LoggerConfig.createLogger(
-                false, Level.INFO, loggerName, "false",
-                null, null, config, null);
+        LoggerConfig loggerConfig = new LoggerConfig(loggerName, Level.INFO, false);
         loggerConfig.addAppender(fileAppender, Level.INFO, null);
+
+        if (debug) {
+            org.apache.logging.log4j.core.appender.ConsoleAppender consoleAppender =
+                    org.apache.logging.log4j.core.appender.ConsoleAppender.newBuilder()
+                            .setName(loggerName + "-console")
+                            .setLayout(layout)
+                            .setTarget(org.apache.logging.log4j.core.appender.ConsoleAppender.Target.SYSTEM_OUT)
+                            .setConfiguration(config)
+                            .build();
+            consoleAppender.start();
+            loggerConfig.addAppender(consoleAppender, Level.DEBUG, null);
+        }
+
         config.addLogger(loggerName, loggerConfig);
         context.updateLoggers();
 
         return LogManager.getLogger(loggerName);
     }
 
-    private Appender findAppender() {
+    private Appender findAppender(Logger logger, String suffix) {
         if (logger instanceof org.apache.logging.log4j.core.Logger coreLogger) {
-            return coreLogger.getAppenders().values().stream().findFirst().orElse(null);
+            return coreLogger.getAppenders().values().stream()
+                    .filter(app -> app.getName() != null && app.getName().endsWith(suffix))
+                    .findFirst()
+                    .orElse(null);
         }
         return null;
     }
