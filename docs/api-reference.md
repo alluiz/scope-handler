@@ -105,15 +105,19 @@ public class Handler {
         .set("as.axway.auth.password", System.getenv("AS_PASSWORD"))
         .build();
     AuthorizationServerSettings axwaySettings = AuthorizationServerSettings.from(config, "axway", "prod");
-AuthorizationServerFactory factory = AuthorizationServerFactory.builder()
-        .register("axway", () -> new AxwayAuthorizationServerService(
-            new AxwayAuthorizationServerClient(
-                axwaySettings,
-                Duration.ofSeconds(30),
-                new HttpRequestLogger(Path.of("/tmp/cache/axway.log"))
-            ),
-            new AxwayCacheStore(Path.of("/tmp/cache/axway.json"), new ObjectMapper())
-        ))
+    HttpRequestLogger logger = new HttpRequestLogger(Path.of("/tmp/cache/axway.log"));
+    AuthorizationServerFactory factory = AuthorizationServerFactory.builder()
+        .register("axway", () -> {
+            WebClient baseClient = HttpWebClientFactory.build(logger);
+            WebClient webClient = HttpWebClientFactory.mutate(baseClient, builder -> builder
+                .baseUrl(axwaySettings.getBaseUrl())
+                .defaultHeader("Authorization", "Basic ...")
+                .defaultHeader("Accept", "application/json"));
+            return new AxwayAuthorizationServerService(
+                new AxwayAuthorizationServerClient(webClient, Duration.ofSeconds(30)),
+                new AxwayCacheStore(Path.of("/tmp/cache/axway.json"), new ObjectMapper())
+            );
+        })
         .build();
     client = factory.create("axway");
   }
