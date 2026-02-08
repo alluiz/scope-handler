@@ -16,7 +16,6 @@ import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-import reactor.util.retry.Retry;
 
 public final class AxwayAuthorizationServerClient implements AuthorizationServerClient {
     private static final String BASE_PATH = "/api/portal/v1.2";
@@ -30,18 +29,15 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
     private final AxwayRequestLogger requestLogger;
     private final WebClient webClient;
     private final Duration requestTimeout;
-    private final Retry retrySpec;
 
     public AxwayAuthorizationServerClient(AuthorizationServerSettings settings,
                                           AxwayCacheStore cacheStore,
                                           Duration requestTimeout,
-                                          Retry retrySpec,
                                           AxwayRequestLogger requestLogger) {
         this.baseUrl = normalizeBaseUrl(settings.getBaseUrl());
         this.authHeader = basicAuth(settings.getUsername(), settings.getPassword());
         this.cacheStore = cacheStore;
         this.requestTimeout = requestTimeout;
-        this.retrySpec = retrySpec;
         this.requestLogger = requestLogger;
         this.webClient = WebClient.builder()
                 .baseUrl(this.baseUrl)
@@ -62,7 +58,6 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
                     .bodyValue(payload)
                     .exchangeToMono(resp -> toPostResponse(resp, ctx))
                     .timeout(requestTimeout)
-                    .retryWhen(retrySpec)
                     .block();
             if (response.statusCode == 409) {
                 return OperationOutcome.skip(409, "scope already associated for application id=" + appId + " scope=" + scope);
@@ -90,7 +85,6 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
                     .uri(path)
                     .exchangeToMono(resp -> toDefaultResponse(resp, ctx))
                     .timeout(requestTimeout)
-                    .retryWhen(retrySpec)
                     .block();
             return response.toOutcome("dissociate");
         } catch (Exception e) {
@@ -117,7 +111,6 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
                     .uri(path)
                     .exchangeToMono(resp -> toDto(resp, ApplicationDto.class, ctx))
                     .timeout(requestTimeout)
-                    .retryWhen(retrySpec)
                     .block();
         } catch (Exception e) {
             requestLogger.logException("getApplicationId", e);
@@ -141,7 +134,6 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
                     .uri(path)
                     .exchangeToMono(resp -> toDto(resp, OAuthAppScopeDto[].class, ctx))
                     .timeout(requestTimeout)
-                    .retryWhen(retrySpec)
                     .block();
         } catch (Exception e) {
             requestLogger.logException("getScopeId", e);

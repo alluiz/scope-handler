@@ -13,7 +13,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import reactor.util.retry.Retry;
 
 import java.nio.file.Path;
 import java.time.Duration;
@@ -47,7 +46,6 @@ class AxwayAuthorizationServerClientTest {
                 settings(server.url("/").toString()),
                 new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
                 Duration.ofSeconds(5),
-                Retry.max(0),
                 new AxwayRequestLogger(tempDir.resolve("axway.log"))
         );
 
@@ -76,7 +74,6 @@ class AxwayAuthorizationServerClientTest {
                 settings(server.url("/").toString()),
                 new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
                 Duration.ofSeconds(5),
-                Retry.max(0),
                 new AxwayRequestLogger(tempDir.resolve("axway.log"))
         );
 
@@ -103,7 +100,6 @@ class AxwayAuthorizationServerClientTest {
                 settings(server.url("/").toString()),
                 new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
                 Duration.ofSeconds(5),
-                Retry.max(0),
                 new AxwayRequestLogger(tempDir.resolve("axway.log"))
         );
 

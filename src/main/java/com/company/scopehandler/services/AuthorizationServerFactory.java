@@ -8,8 +8,6 @@ import com.company.scopehandler.axway.AxwayRequestLogger;
 import com.company.scopehandler.axway.cache.AxwayCacheStore;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.function.Predicate;
-import reactor.util.retry.Retry;
 
 public final class AuthorizationServerFactory {
     public AuthorizationServerClient create(String asName, String environment, AppConfig config, Path cacheDir) {
@@ -20,7 +18,6 @@ public final class AuthorizationServerFactory {
                     settings,
                     buildAxwayCache(cacheDir, asName, environment),
                     buildAxwayTimeout(config, asName),
-                    buildAxwayRetry(config, asName),
                     buildAxwayLogger(config, cacheDir, asName, environment)
             );
             default -> throw new IllegalArgumentException("Authorization Server nao suportado: " + asName);
@@ -35,19 +32,6 @@ public final class AuthorizationServerFactory {
     private Duration buildAxwayTimeout(AppConfig config, String asName) {
         long seconds = config.getInt("as." + asName + ".timeoutSeconds", 30);
         return Duration.ofSeconds(seconds);
-    }
-
-    private Retry buildAxwayRetry(AppConfig config, String asName) {
-        int attempts = config.getInt("as." + asName + ".retry.attempts", 2);
-        long backoffMs = config.getInt("as." + asName + ".retry.backoffMs", 200);
-        Predicate<Throwable> retryFilter = error -> {
-            if (error instanceof com.company.scopehandler.axway.AxwayAuthorizationServerClient.AxwayHttpException ex) {
-                return ex.getStatusCode() >= 500;
-            }
-            return true;
-        };
-        return Retry.backoff(attempts, Duration.ofMillis(backoffMs))
-                .filter(retryFilter);
     }
 
     private AxwayRequestLogger buildAxwayLogger(AppConfig config, Path cacheDir, String asName, String environment) {
