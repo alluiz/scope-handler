@@ -222,7 +222,7 @@ public final class BatchExecutorService {
         if (cache == null) {
             return;
         }
-        if (result.getStatus() != com.company.scopehandler.domain.OperationStatus.SKIP) {
+        if (result.getStatus() == com.company.scopehandler.domain.OperationStatus.OK) {
             cache.record(result.getMode(), result.getClientId(), result.getScope());
         }
     }

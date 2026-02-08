@@ -27,20 +27,41 @@ public final class AxwayRequestLogger implements AutoCloseable {
         }
     }
 
-    public void logRequest(ClientRequest request) {
-        writeLine("REQUEST " + Instant.now() + " " + request.method() + " " + request.url());
+    public void logRequest(ClientRequest request, String context) {
+        writeLine("REQUEST " + Instant.now() + " " + request.method() + " " + request.url()
+                + " ctx=" + context);
     }
 
-    public void logResponse(HttpRequest request, ClientResponse response, String body) {
+    public void logRequest(HttpRequest request, String context) {
+        writeLine("REQUEST " + Instant.now() + " " + request.getMethod() + " " + request.getURI()
+                + " ctx=" + context);
+    }
+
+    public void logResponse(HttpRequest request, ClientResponse response, String body, String context) {
         String snippet = body == null ? "" : body.length() > 200 ? body.substring(0, 200) + "..." : body;
         writeLine("RESPONSE " + Instant.now() + " " + request.getMethod() + " " + request.getURI()
-                + " status=" + response.rawStatusCode() + " body=" + snippet);
+                + " status=" + response.rawStatusCode() + " body=" + snippet
+                + " ctx=" + context);
     }
 
-    public void logResponse(ClientRequest request, ClientResponse response, String body) {
+    public void logResponse(ClientRequest request, ClientResponse response, String body, String context) {
         String snippet = body == null ? "" : body.length() > 200 ? body.substring(0, 200) + "..." : body;
         writeLine("RESPONSE " + Instant.now() + " " + request.method() + " " + request.url()
-                + " status=" + response.rawStatusCode() + " body=" + snippet);
+                + " status=" + response.rawStatusCode() + " body=" + snippet
+                + " ctx=" + context);
+    }
+
+    public void logException(String context, Throwable error) {
+        writeLine("EXCEPTION " + Instant.now() + " ctx=" + context + " error=" + error.getClass().getSimpleName()
+                + " message=" + safeMessage(error));
+    }
+
+    private String safeMessage(Throwable error) {
+        if (error == null || error.getMessage() == null) {
+            return "";
+        }
+        String msg = error.getMessage();
+        return msg.length() > 200 ? msg.substring(0, 200) + "..." : msg;
     }
 
     private synchronized void writeLine(String line) {
