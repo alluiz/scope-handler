@@ -26,7 +26,7 @@ class BatchExecutorServiceTest {
                         null,
                         0,
                         0,
-                        Mode.ASSOCIATE,
+                        Mode.ADD,
                         operation.getClientId(),
                         operation.getScope(),
                         com.company.scopehandler.api.domain.OperationStatus.OK,
@@ -39,7 +39,7 @@ class BatchExecutorServiceTest {
 
             @Override
             public Mode getMode() {
-                return Mode.ASSOCIATE;
+                return Mode.ADD;
             }
         };
 

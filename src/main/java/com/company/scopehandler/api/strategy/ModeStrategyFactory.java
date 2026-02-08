@@ -6,8 +6,9 @@ import com.company.scopehandler.api.ports.AuthorizationServerService;
 public final class ModeStrategyFactory {
     public ModeStrategy create(Mode mode, AuthorizationServerService client, boolean createScope) {
         return switch (mode) {
-            case ASSOCIATE -> new AssociateStrategy(client, createScope);
-            case DISSOCIATE -> new DissociateStrategy(client);
+            case ADD -> new AssociateStrategy(client, createScope);
+            case REMOVE -> new DissociateStrategy(client);
+            case READ -> new ReadStrategy();
         };
     }
 }

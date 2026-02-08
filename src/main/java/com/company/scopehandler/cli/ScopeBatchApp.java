@@ -25,7 +25,7 @@ import java.util.concurrent.Callable;
 )
 public final class ScopeBatchApp implements Callable<Integer> {
 
-    @Option(names = "--mode", required = true, description = "Modo: associate|dissociate")
+    @Option(names = "--mode", required = true, description = "Modo: add|remove|read")
     private String mode;
 
     @Option(names = "--clients", split = ",", description = "Lista de clients separados por virgula")
@@ -109,10 +109,10 @@ public final class ScopeBatchApp implements Callable<Integer> {
         password = credentials.password();
 
         Mode parsedMode = Mode.from(mode);
-        if (parsedMode == Mode.DISSOCIATE) {
+        if (parsedMode == Mode.REMOVE) {
             new ConfirmationService().confirmDestructiveOperation(confirm);
         }
-        if (parsedMode == Mode.DISSOCIATE && createScope) {
+        if (parsedMode == Mode.REMOVE && createScope) {
             throw new IllegalArgumentException("create-scope nao se aplica ao modo desassociar");
         }
 

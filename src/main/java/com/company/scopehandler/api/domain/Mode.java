@@ -1,8 +1,9 @@
 package com.company.scopehandler.api.domain;
 
 public enum Mode {
-    ASSOCIATE,
-    DISSOCIATE;
+    ADD,
+    REMOVE,
+    READ;
 
     public static Mode from(String value) {
         if (value == null) {
@@ -10,8 +11,9 @@ public enum Mode {
         }
         String normalized = value.trim().toLowerCase();
         return switch (normalized) {
-            case "associate", "associar" -> ASSOCIATE;
-            case "dissociate", "desassociar" -> DISSOCIATE;
+            case "add", "associar", "associate" -> ADD;
+            case "remove", "desassociar", "dissociate" -> REMOVE;
+            case "read", "ler" -> READ;
             default -> throw new IllegalArgumentException("invalid mode: " + value);
         };
     }

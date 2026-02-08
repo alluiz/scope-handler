@@ -20,7 +20,7 @@ class AuditServiceTest {
                 "op-1",
                 1,
                 1,
-                Mode.ASSOCIATE,
+                Mode.ADD,
                 "client1",
                 "scope1",
                 com.company.scopehandler.api.domain.OperationStatus.OK,

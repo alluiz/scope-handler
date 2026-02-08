@@ -30,7 +30,7 @@ public final class AssociateStrategy implements ModeStrategy {
                 null,
                 0,
                 0,
-                Mode.ASSOCIATE,
+                Mode.ADD,
                 operation.getClientId(),
                 operation.getScope(),
                 associateOutcome.getStatus(),
@@ -43,7 +43,7 @@ public final class AssociateStrategy implements ModeStrategy {
 
     @Override
     public Mode getMode() {
-        return Mode.ASSOCIATE;
+        return Mode.ADD;
     }
 
     private String buildMessage(OperationOutcome createOutcome, OperationOutcome associateOutcome) {
