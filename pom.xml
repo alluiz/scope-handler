@@ -73,7 +73,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.3.0</version>
                 <configuration>
-                    <mainClass>com.company.scopehandler.app.ScopeBatchApp</mainClass>
+                    <mainClass>com.company.scopehandler.cli.ScopeBatchApp</mainClass>
                 </configuration>
             </plugin>
             <plugin>
@@ -91,7 +91,7 @@
                             <assembleDirectory>${project.build.directory}/app</assembleDirectory>
                             <programs>
                                 <program>
-                                    <mainClass>com.company.scopehandler.app.ScopeBatchApp</mainClass>
+                                    <mainClass>com.company.scopehandler.cli.ScopeBatchApp</mainClass>
                                     <name>scope-handler</name>
                                 </program>
                             </programs>
@@ -112,7 +112,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.company.scopehandler.app.ScopeBatchApp</mainClass>
+                            <mainClass>com.company.scopehandler.cli.ScopeBatchApp</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

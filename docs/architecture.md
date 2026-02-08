@@ -5,15 +5,15 @@
 ## Diagrama de Módulos
 ```mermaid
 flowchart TB
-    App[app] --> UseCases[usecases]
-    UseCases --> Services[services]
-    Services --> Ports[ports]
-    Ports --> Axway[axway]
+    CLI[cli] --> UseCases[api.usecases]
+    UseCases --> Services[api.services]
+    Services --> Ports[api.ports]
+    Ports --> Axway[api.axway]
     Ports --> Mock[mock]
-    Services --> Domain[domain]
-    Axway --> AxwayDTOs[axway/dto]
-    Axway --> AxwayCache[axway/cache]
-    Axway --> AxwayLogger[axway/logger]
+    Services --> Domain[api.domain]
+    Axway --> AxwayDTOs[api.axway/dto]
+    Axway --> AxwayCache[api.axway/cache]
+    Axway --> AxwayLogger[api.axway/logger]
 ```
 
 ## Diagrama de Classes
@@ -39,12 +39,12 @@ classDiagram
 ```
 
 ## Camadas
-- **app**: ponto de entrada e CLI (Picocli).
-- **usecases**: orquestração principal do batch.
-- **services**: regras de execução, paralelismo e auditoria.
-- **ports**: contratos de integração (ex.: `AuthorizationServerClient`).
-- **axway**: implementação concreta de AS (DTOs, cache, logger).
-- **domain**: entidades e enums de status.
+- **cli**: ponto de entrada e interação com usuário/ambiente (`com.company.scopehandler.cli`).
+- **api.usecases**: orquestração principal do batch.
+- **api.services**: regras de execução, paralelismo e auditoria.
+- **api.ports**: contratos de integração (ex.: `AuthorizationServerClient`).
+- **api.axway**: implementação concreta de AS (DTOs, cache, logger).
+- **api.domain**: entidades e enums de status.
 
 ## Padrões aplicados
 - **Strategy**: seleção de modo (`associate`/`dissociate`) em ponto único.

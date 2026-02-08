@@ -16,15 +16,20 @@ Se publicar internamente, consuma o artefato Maven do projeto. Exemplo de depend
 ```
 
 ## Pacotes principais
-- `com.company.scopehandler.usecases`: orquestração do batch.
-- `com.company.scopehandler.services`: execução concorrente e relatórios.
-- `com.company.scopehandler.ports`: contratos para integração com AS.
-- `com.company.scopehandler.config`: configuração por propriedades.
+- `com.company.scopehandler.api.usecases`: orquestração do batch.
+- `com.company.scopehandler.api.services`: execução concorrente e relatórios.
+- `com.company.scopehandler.api.ports`: contratos para integração com AS.
+- `com.company.scopehandler.api.config`: configuração por propriedades e builder.
 
 ## Inicialização programática
-### 1) Carregar configuração
+### 1) Carregar configuração (Builder)
 ```java
-AppConfig config = AppConfig.load(Path.of("/etc/scope-handler/application.properties"));
+AppConfig config = AppConfig.builder()
+    .set("as.axway.env.prod.baseUrl", "https://axway.prod.example.com")
+    .set("as.axway.auth.username", "admin")
+    .set("as.axway.auth.password", "secret")
+    .set("as.axway.timeoutSeconds", "30")
+    .build();
 String asName = "axway";
 String env = "prod";
 AuthorizationServerSettings settings = AuthorizationServerSettings.from(config, asName, env);
@@ -47,13 +52,24 @@ if (result.isSuccess()) {
 
 ## Usando o Use Case (batch)
 ```java
-InputResolverService resolver = new InputResolverService();
-AuditService auditService = new AuditService(...);
-BatchExecutorService executor = new BatchExecutorService(...);
-ExecuteBatchUseCase useCase = new ExecuteBatchUseCase(resolver, executor, auditService);
+List<String> clients = List.of("client-1", "client-2");
+List<String> scopes = List.of("read", "write");
+
+BatchPlannerService planner = new BatchPlannerService();
+BatchExecutorService executor = new BatchExecutorService();
+ExecuteBatchUseCase useCase = new ExecuteBatchUseCase(planner, executor);
 
 ExecutionCache cache = ExecutionCache.load(cacheFile, true);
-BatchSummary summary = useCase.execute(config, asName, env, mode, inputs, cache);
+BatchReport report = useCase.execute(
+    clients,
+    scopes,
+    strategy,
+    auditService,
+    threshold,
+    threads,
+    false,
+    cache
+);
 ```
 
 ## Exemplo em worker de fila
@@ -71,7 +87,11 @@ public class Handler {
   private final AuthorizationServerClient client;
 
   public Handler() {
-    AppConfig config = AppConfig.load(Path.of("/var/task/application.properties"));
+    AppConfig config = AppConfig.builder()
+        .set("as.axway.env.prod.baseUrl", "https://axway.prod.example.com")
+        .set("as.axway.auth.username", System.getenv("AS_USERNAME"))
+        .set("as.axway.auth.password", System.getenv("AS_PASSWORD"))
+        .build();
     client = new AuthorizationServerFactory().create("axway", "prod", config, Path.of("/tmp/cache"));
   }
 

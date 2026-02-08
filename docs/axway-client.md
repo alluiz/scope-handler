@@ -2,7 +2,7 @@
 
 [Anterior](concurrency-performance.md) | [Índice](README.md) | [Próximo](api-reference.md)
 
-Implementação concreta em `com.company.scopehandler.axway`.
+Implementação concreta em `com.company.scopehandler.api.axway`.
 
 ## Endpoints
 - `GET /api/portal/v1.2/applications/oauthclient/{clientId}`
