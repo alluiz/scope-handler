@@ -68,10 +68,8 @@ Principais chaves:
 - `as.<nome>.auth.username` / `as.<nome>.auth.password`
 
 Para Axway (API Manager), use `--as axway` e configure apenas `baseUrl` e credenciais.
-Timeout/retry do WebClient:
+Timeout do WebClient:
 - `as.axway.timeoutSeconds` (default 30)
-- `as.axway.retry.attempts` (default 2, apenas 5xx)
-- `as.axway.retry.backoffMs` (default 200)
 - `as.axway.logFile` (arquivo de log detalhado das requisicoes)
 - `batch.threads.max`
 - `batch.threads.threshold`
