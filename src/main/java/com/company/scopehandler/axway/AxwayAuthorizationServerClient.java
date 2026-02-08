@@ -6,17 +6,17 @@ import com.company.scopehandler.ports.AuthorizationServerClient;
 import com.company.scopehandler.axway.cache.AxwayCacheStore;
 import com.company.scopehandler.axway.dto.ApplicationDto;
 import com.company.scopehandler.axway.dto.OAuthAppScopeDto;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 public final class AxwayAuthorizationServerClient implements AuthorizationServerClient {
     private static final String BASE_PATH = "/api/portal/v1.2";
@@ -24,34 +24,46 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
     private static final String APP_SCOPES = "/applications/{id}/scope";
     private static final String APP_SCOPE_BY_ID = "/applications/{id}/scope/{scopeId}";
 
-    private final HttpClient httpClient;
-    private final ObjectMapper mapper;
     private final String baseUrl;
     private final String authHeader;
     private final AxwayCacheStore cacheStore;
+    private final WebClient webClient;
+    private final Duration requestTimeout;
+    private final Retry retrySpec;
 
-    public AxwayAuthorizationServerClient(AuthorizationServerSettings settings, AxwayCacheStore cacheStore) {
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build();
-        this.mapper = new ObjectMapper();
+    public AxwayAuthorizationServerClient(AuthorizationServerSettings settings,
+                                          AxwayCacheStore cacheStore,
+                                          Duration requestTimeout,
+                                          Retry retrySpec) {
         this.baseUrl = normalizeBaseUrl(settings.getBaseUrl());
         this.authHeader = basicAuth(settings.getUsername(), settings.getPassword());
         this.cacheStore = cacheStore;
+        this.requestTimeout = requestTimeout;
+        this.retrySpec = retrySpec;
+        this.webClient = WebClient.builder()
+                .baseUrl(this.baseUrl)
+                .defaultHeader("Authorization", authHeader)
+                .defaultHeader("Accept", "application/json")
+                .build();
     }
 
     @Override
     public OperationOutcome associateScope(String clientId, String scope) {
         try {
             String appId = getApplicationId(clientId);
-            String existingScopeId = getScopeId(appId, scope);
-            if (existingScopeId != null) {
-                return OperationOutcome.skip(200, "scope already associated for application id=" + appId + " scope=" + scope);
+            OAuthAppScopeDto payload = new OAuthAppScopeDto(appId, scope, true);
+            AxwayResponse response = webClient.post()
+                    .uri(APP_SCOPES.replace("{id}", urlEncode(appId)))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(payload)
+                    .exchangeToMono(this::toPostResponse)
+                    .timeout(requestTimeout)
+                    .retryWhen(retrySpec)
+                    .block();
+            if (response.statusCode == 409) {
+                return OperationOutcome.skip(409, "scope already associated for application id=" + appId + " scope=" + scope);
             }
-            OAuthAppScopeDto payload = new OAuthAppScopeDto(appId, scope, false);
-            String body = mapper.writeValueAsString(payload);
-            HttpResponse<String> response = sendRequest("POST", APP_SCOPES.replace("{id}", urlEncode(appId)), body);
-            return toOutcome("associate", response);
+            return response.toOutcome("associate");
         } catch (Exception e) {
             return OperationOutcome.fail(-1, "associate failed: " + e.getMessage());
         }
@@ -68,8 +80,13 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
             String path = APP_SCOPE_BY_ID
                     .replace("{id}", urlEncode(appId))
                     .replace("{scopeId}", urlEncode(scopeId));
-            HttpResponse<String> response = sendRequest("DELETE", path, null);
-            return toOutcome("dissociate", response);
+            AxwayResponse response = webClient.delete()
+                    .uri(path)
+                    .exchangeToMono(this::toDefaultResponse)
+                    .timeout(requestTimeout)
+                    .retryWhen(retrySpec)
+                    .block();
+            return response.toOutcome("dissociate");
         } catch (Exception e) {
             return OperationOutcome.fail(-1, "dissociate failed: " + e.getMessage());
         }
@@ -86,11 +103,12 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
             return cached;
         }
         String path = APP_BY_CLIENT.replace("{clientId}", urlEncode(clientId));
-        HttpResponse<String> response = sendRequest("GET", path, null);
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IllegalStateException("HTTP " + response.statusCode());
-        }
-        ApplicationDto dto = mapper.readValue(response.body(), ApplicationDto.class);
+        ApplicationDto dto = webClient.get()
+                .uri(path)
+                .exchangeToMono(resp -> toDto(resp, ApplicationDto.class))
+                .timeout(requestTimeout)
+                .retryWhen(retrySpec)
+                .block();
         if (dto == null || dto.getId() == null || dto.getId().isBlank()) {
             throw new IllegalStateException("application id not found in response");
         }
@@ -102,11 +120,12 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
 
     private String getScopeId(String appId, String scope) throws Exception {
         String path = APP_SCOPES.replace("{id}", urlEncode(appId));
-        HttpResponse<String> response = sendRequest("GET", path, null);
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IllegalStateException("HTTP " + response.statusCode());
-        }
-        OAuthAppScopeDto[] scopes = mapper.readValue(response.body(), OAuthAppScopeDto[].class);
+        OAuthAppScopeDto[] scopes = webClient.get()
+                .uri(path)
+                .exchangeToMono(resp -> toDto(resp, OAuthAppScopeDto[].class))
+                .timeout(requestTimeout)
+                .retryWhen(retrySpec)
+                .block();
         Map<String, String> map = new HashMap<>();
         if (scopes != null) {
             for (OAuthAppScopeDto item : scopes) {
@@ -118,51 +137,33 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
         return map.get(scope);
     }
 
-    private HttpResponse<String> sendRequest(String method, String path, String body) throws Exception {
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(joinUrl(baseUrl, path)))
-                .timeout(Duration.ofSeconds(30))
-                .header("Authorization", authHeader)
-                .header("Accept", "application/json");
-
-        if (body != null) {
-            builder.header("Content-Type", "application/json");
+    private <T> Mono<T> toDto(ClientResponse response, Class<T> dtoClass) {
+        if (response.statusCode().is2xxSuccessful()) {
+            return response.bodyToMono(dtoClass);
         }
-
-        HttpRequest.BodyPublisher publisher = body == null
-                ? HttpRequest.BodyPublishers.noBody()
-                : HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8);
-
-        builder.method(method, publisher);
-        return httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        return response.bodyToMono(Void.class)
+                .then(Mono.error(new AxwayHttpException(response.rawStatusCode())));
     }
 
-    private OperationOutcome toOutcome(String op, HttpResponse<String> response) {
-        int status = response.statusCode();
-        boolean success = status >= 200 && status < 300;
-        String message = op + " status=" + status;
-        if (response.body() != null && !response.body().isBlank()) {
-            String body = response.body().trim();
-            if (body.length() > 200) {
-                body = body.substring(0, 200) + "...";
-            }
-            message = message + " body=" + body;
+    private Mono<AxwayResponse> toDefaultResponse(ClientResponse response) {
+        if (response.statusCode().is2xxSuccessful()) {
+            return response.bodyToMono(Void.class)
+                    .thenReturn(new AxwayResponse(response.rawStatusCode()));
         }
-        return success ? OperationOutcome.ok(status, message) : OperationOutcome.fail(status, message);
+        return response.bodyToMono(Void.class)
+                .then(Mono.error(new AxwayHttpException(response.rawStatusCode())));
+    }
+
+    private Mono<AxwayResponse> toPostResponse(ClientResponse response) {
+        if (response.rawStatusCode() == 409) {
+            return response.bodyToMono(Void.class)
+                    .thenReturn(new AxwayResponse(409));
+        }
+        return toDefaultResponse(response);
     }
 
     private String urlEncode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
-    }
-
-    private String joinUrl(String base, String path) {
-        if (base.endsWith("/") && path.startsWith("/")) {
-            return base.substring(0, base.length() - 1) + path;
-        }
-        if (!base.endsWith("/") && !path.startsWith("/")) {
-            return base + "/" + path;
-        }
-        return base + path;
     }
 
     private String normalizeBaseUrl(String base) {
@@ -179,5 +180,34 @@ public final class AxwayAuthorizationServerClient implements AuthorizationServer
     private String basicAuth(String username, String password) {
         String credentials = username + ":" + password;
         return "Basic " + java.util.Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private final class AxwayResponse {
+        private final int statusCode;
+
+        private AxwayResponse(int statusCode) {
+            this.statusCode = statusCode;
+        }
+
+        private OperationOutcome toOutcome(String op) {
+            String message = op + " status=" + statusCode;
+            if (statusCode >= 200 && statusCode < 300) {
+                return OperationOutcome.ok(statusCode, message);
+            }
+            return OperationOutcome.fail(statusCode, message);
+        }
+    }
+
+    public static final class AxwayHttpException extends RuntimeException {
+        private final int statusCode;
+
+        private AxwayHttpException(int statusCode) {
+            super("HTTP " + statusCode);
+            this.statusCode = statusCode;
+        }
+
+        public int getStatusCode() {
+            return statusCode;
+        }
     }
 }

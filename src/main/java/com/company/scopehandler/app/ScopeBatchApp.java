@@ -123,12 +123,11 @@ public final class ScopeBatchApp implements Callable<Integer> {
         List<String> resolvedClients = inputResolver.resolve(clients, clientsFile);
         List<String> resolvedScopes = inputResolver.resolve(scopes, scopesFile);
 
-        AuthorizationServerClient asClient = new AuthorizationServerFactory().create(resolvedAsName, resolvedEnv, config, resolvedAuditDir.resolve("cache"));
-        ModeStrategy strategy = new ModeStrategyFactory().create(parsedMode, asClient, createScope);
-
         int resolvedThreshold = threshold != null ? threshold : config.getInt("batch.threads.threshold", 500);
         int resolvedThreads = threads != null ? threads : config.getInt("batch.threads.max", 8);
         Path resolvedAuditDir = auditDir != null ? auditDir : config.getPath("audit.dir", "./audit");
+        AuthorizationServerClient asClient = new AuthorizationServerFactory().create(resolvedAsName, resolvedEnv, config, resolvedAuditDir.resolve("cache"));
+        ModeStrategy strategy = new ModeStrategyFactory().create(parsedMode, asClient, createScope);
 
         BatchPlannerService plannerService = new BatchPlannerService();
         BatchExecutorService executorService = new BatchExecutorService();
