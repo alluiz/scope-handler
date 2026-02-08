@@ -1,22 +1,20 @@
 package com.company.scopehandler.cli;
 
 import com.company.scopehandler.api.config.AppConfig;
-import com.company.scopehandler.cli.config.ConfigLoader;
-import com.company.scopehandler.api.config.Credentials;
-import com.company.scopehandler.cli.config.CredentialsLoader;
 import com.company.scopehandler.api.domain.Mode;
-import com.company.scopehandler.api.ports.AuthorizationServerClient;
-import com.company.scopehandler.api.services.*;
+import com.company.scopehandler.api.ports.AuthorizationServerService;
+import com.company.scopehandler.api.services.AuthorizationServerFactory;
+import com.company.scopehandler.api.services.AuthorizationServerFactory;
 import com.company.scopehandler.api.strategy.ModeStrategy;
 import com.company.scopehandler.api.strategy.ModeStrategyFactory;
-import com.company.scopehandler.api.usecases.ExecuteBatchUseCase;
+import com.company.scopehandler.providers.axway.AxwayClientFactory;
+import com.company.scopehandler.providers.mock.MockClientFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.Callable;
 
 @Command(
@@ -105,7 +103,10 @@ public final class ScopeBatchApp implements Callable<Integer> {
             throw new IllegalArgumentException("Parametro --env e obrigatorio.");
         }
 
-        resolveCredentials();
+        CredentialsService credentialsService = new CredentialsService();
+        CredentialsService.Result credentials = credentialsService.resolve(user, password, credentialsFile);
+        user = credentials.username();
+        password = credentials.password();
 
         Mode parsedMode = Mode.from(mode);
         if (parsedMode == Mode.DISSOCIATE) {
@@ -118,69 +119,44 @@ public final class ScopeBatchApp implements Callable<Integer> {
         String resolvedAsName = normalize(asName);
         String resolvedEnv = normalize(environment);
 
-        AppConfig config = buildConfig(resolvedAsName, resolvedEnv);
+        AppConfig config = new CliConfigService().buildConfig(
+                configFile,
+                resolvedAsName,
+                resolvedEnv,
+                asBaseUrl,
+                user,
+                password,
+                auditDir
+        );
         InputResolverService inputResolver = new InputResolverService();
-        List<String> resolvedClients = inputResolver.resolve(clients, clientsFile);=
+        List<String> resolvedClients = inputResolver.resolve(clients, clientsFile);
         List<String> resolvedScopes = inputResolver.resolve(scopes, scopesFile);
 
         int resolvedThreshold = threshold != null ? threshold : config.getInt("batch.threads.threshold", 500);
         int resolvedThreads = threads != null ? threads : config.getInt("batch.threads.max", 8);
         Path resolvedAuditDir = auditDir != null ? auditDir : config.getPath("audit.dir", "./audit");
-        AuthorizationServerClient asClient = new AuthorizationServerFactory().create(resolvedAsName, resolvedEnv, config, resolvedAuditDir.resolve("cache"));
+        AuthorizationServerFactory registry = new RegistryService(
+                new MockClientFactory(),
+                new AxwayClientFactory()
+        ).build(config, resolvedEnv, resolvedAuditDir.resolve("cache"));
+        AuthorizationServerService asClient = registry.create(resolvedAsName);
         ModeStrategy strategy = new ModeStrategyFactory().create(parsedMode, asClient, createScope);
 
-        BatchPlannerService plannerService = new BatchPlannerService();
-        BatchExecutorService executorService = new BatchExecutorService();
-        ExecuteBatchUseCase useCase = new ExecuteBatchUseCase(plannerService, executorService);
-
-        java.nio.file.Path cacheDir = resolvedAuditDir.resolve("cache");
-        java.nio.file.Path cacheFile = cacheDir.resolve("resume-cache-" + asName + "-" + environment + ".txt");
-        com.company.scopehandler.api.cache.ExecutionCache cache = com.company.scopehandler.api.cache.ExecutionCache.load(cacheFile, !ignoreCache);
-
-        boolean completed = false;
-        try (AuditService auditService = new AuditService(resolvedAuditDir);
-             com.company.scopehandler.api.cache.ExecutionCache ignored = cache) {
-            BatchReport report = useCase.execute(
-                    resolvedClients,
-                    resolvedScopes,
-                    strategy,
-                    auditService,
-                    resolvedThreshold,
-                    resolvedThreads,
-                    debug,
-                    cache
-            );
-            Path reportPath = new ReportService().writeReport(resolvedAuditDir, report);
-
-            printSummary(report, auditService.getFilePath(), reportPath, resolvedThreshold, resolvedThreads);
-            completed = true;
-        } finally {
-            if (completed && !ignoreCache) {
-                cache.deleteFile();
-            }
-        }
+        BatchRunInput input = new BatchRunInput(
+                resolvedClients,
+                resolvedScopes,
+                strategy,
+                resolvedAuditDir,
+                resolvedThreshold,
+                resolvedThreads,
+                debug,
+                ignoreCache,
+                resolvedAsName,
+                resolvedEnv
+        );
+        new BatchRunner().run(input);
 
         return 0;
-    }
-
-    private AppConfig buildConfig(String asName, String environment) {
-        Properties props = ConfigLoader.load(configFile);
-        AppConfig.Builder builder = AppConfig.builder().fromProperties(props);
-
-        if (asBaseUrl != null) {
-            builder.set("as." + asName + ".env." + environment + ".baseUrl", asBaseUrl);
-        }
-        if (user != null) {
-            builder.set("as." + asName + ".auth.username", user);
-        }
-        if (password != null) {
-            builder.set("as." + asName + ".auth.password", password);
-        }
-        if (auditDir != null) {
-            builder.set("audit.dir", auditDir.toString());
-        }
-
-        return builder.build();
     }
 
     private String normalize(String value) {
@@ -208,67 +184,4 @@ public final class ScopeBatchApp implements Callable<Integer> {
         }
     }
 
-    private void resolveCredentials() {
-        if (user != null && !user.isBlank() && password != null && !password.isBlank()) {
-            return;
-        }
-
-        Path file = credentialsFile != null ? credentialsFile : Path.of("credentials");
-        Credentials fileCreds = CredentialsLoader.load(file);
-        Credentials.Builder builder = Credentials.builder()
-                .username(fileCreds.username())
-                .password(fileCreds.password());
-
-        if (user != null) {
-            builder.username(user);
-        }
-        if (password != null) {
-            builder.password(password);
-        }
-
-        Credentials creds = builder.build();
-        if (!creds.isComplete()) {
-            promptForCredentials();
-            builder.username(user).password(password);
-            creds = builder.build();
-        }
-
-        user = creds.username();
-        password = creds.password();
-    }
-
-    private void promptForCredentials() {
-        java.io.Console console = System.console();
-        if (console == null) {
-            throw new IllegalStateException("Nao foi possivel ler credenciais. Informe --user/--password ou arquivo.");
-        }
-        if (user == null || user.isBlank()) {
-            user = console.readLine("Usuario: ");
-        }
-        if (password == null || password.isBlank()) {
-            char[] secret = console.readPassword("Senha: ");
-            if (secret != null) {
-                password = new String(secret);
-            }
-        }
-    }
-
-    private void printSummary(BatchReport report, Path auditFile, Path reportFile, int threshold, int threads) {
-        System.out.println("Batch concluido");
-        System.out.println("Total: " + report.getTotal());
-        System.out.println("Success: " + report.getSuccessCount());
-        System.out.println("Failure: " + report.getFailureCount());
-        System.out.println("Skipped: " + report.getSkipCount());
-        System.out.println("Duracao total: " + com.company.scopehandler.api.services.DurationFormatter.formatSeconds(report.getDurationSeconds()));
-        System.out.println("Media por operacao: " + String.format(java.util.Locale.ROOT, "%.2f", report.getAverageMsPerOperation()) + "ms");
-        System.out.println("Audit: " + auditFile);
-        System.out.println("Report: " + reportFile);
-        System.out.println("Multi-thread: threshold=" + threshold + " maxThreads=" + threads);
-        if (!report.getSampleErrors().isEmpty()) {
-            System.out.println("Amostra de erros:");
-            for (String err : report.getSampleErrors()) {
-                System.out.println("- " + err);
-            }
-        }
-    }
 }

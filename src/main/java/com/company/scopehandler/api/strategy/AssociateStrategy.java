@@ -4,13 +4,13 @@ import com.company.scopehandler.api.domain.Mode;
 import com.company.scopehandler.api.domain.Operation;
 import com.company.scopehandler.api.domain.OperationOutcome;
 import com.company.scopehandler.api.domain.OperationResult;
-import com.company.scopehandler.api.ports.AuthorizationServerClient;
+import com.company.scopehandler.api.ports.AuthorizationServerService;
 
 public final class AssociateStrategy implements ModeStrategy {
-    private final AuthorizationServerClient client;
+    private final AuthorizationServerService client;
     private final boolean createScope;
 
-    public AssociateStrategy(AuthorizationServerClient client, boolean createScope) {
+    public AssociateStrategy(AuthorizationServerService client, boolean createScope) {
         this.client = client;
         this.createScope = createScope;
     }

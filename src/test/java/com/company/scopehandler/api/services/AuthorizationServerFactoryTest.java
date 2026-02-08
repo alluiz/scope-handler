@@ -1,12 +1,10 @@
 package com.company.scopehandler.api.services;
 
-import com.company.scopehandler.api.config.AppConfig;
 import com.company.scopehandler.api.domain.OperationOutcome;
-import com.company.scopehandler.api.ports.AuthorizationServerClient;
+import com.company.scopehandler.api.ports.AuthorizationServerService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.util.Properties;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,8 +16,10 @@ class AuthorizationServerFactoryTest {
 
     @Test
     void createsMockClientAndExecutesOperation(@TempDir Path tempDir) {
-        AppConfig config = new AppConfig(mockProps());
-        AuthorizationServerClient client = new AuthorizationServerFactory().create("mock", "dev", config, tempDir);
+        AuthorizationServerFactory registry = AuthorizationServerFactory.builder()
+                .register("mock", TestClient::new)
+                .build();
+        AuthorizationServerService client = registry.create("mock");
 
         assertNotNull(client);
         OperationOutcome outcome = client.associateScope("client1", "scope1");
@@ -29,16 +29,37 @@ class AuthorizationServerFactoryTest {
 
     @Test
     void failsForUnknownAuthorizationServer(@TempDir Path tempDir) {
-        AppConfig config = new AppConfig(mockProps());
+        AuthorizationServerFactory registry = AuthorizationServerFactory.builder()
+                .register("mock", TestClient::new)
+                .build();
         assertThrows(IllegalArgumentException.class,
-                () -> new AuthorizationServerFactory().create("unknown", "dev", config, tempDir));
+                () -> registry.create("unknown"));
     }
 
-    private Properties mockProps() {
-        Properties props = new Properties();
-        props.setProperty("as.mock.env.dev.baseUrl", "https://mock.dev");
-        props.setProperty("as.mock.auth.username", "user");
-        props.setProperty("as.mock.auth.password", "pass");
-        return props;
+    @Test
+    void allowsCustomRegistration(@TempDir Path tempDir) {
+        AuthorizationServerFactory registry = AuthorizationServerFactory.builder()
+                .register("mock", TestClient::new)
+                .register("custom", TestClient::new)
+                .build();
+        AuthorizationServerService client = registry.create("custom");
+        assertNotNull(client);
+    }
+
+    private static final class TestClient implements AuthorizationServerService {
+        @Override
+        public OperationOutcome associateScope(String clientId, String scope) {
+            return OperationOutcome.ok(200, "ok");
+        }
+
+        @Override
+        public OperationOutcome dissociateScope(String clientId, String scope) {
+            return OperationOutcome.ok(200, "ok");
+        }
+
+        @Override
+        public OperationOutcome createScope(String scope) {
+            return OperationOutcome.ok(200, "ok");
+        }
     }
 }

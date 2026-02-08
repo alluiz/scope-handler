@@ -1,4 +1,4 @@
-package com.company.scopehandler.api.axway.cache;
+package com.company.scopehandler.providers.axway.cache;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 

@@ -4,12 +4,12 @@ import com.company.scopehandler.api.domain.Mode;
 import com.company.scopehandler.api.domain.Operation;
 import com.company.scopehandler.api.domain.OperationOutcome;
 import com.company.scopehandler.api.domain.OperationResult;
-import com.company.scopehandler.api.ports.AuthorizationServerClient;
+import com.company.scopehandler.api.ports.AuthorizationServerService;
 
 public final class DissociateStrategy implements ModeStrategy {
-    private final AuthorizationServerClient client;
+    private final AuthorizationServerService client;
 
-    public DissociateStrategy(AuthorizationServerClient client) {
+    public DissociateStrategy(AuthorizationServerService client) {
         this.client = client;
     }
 

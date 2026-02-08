@@ -8,7 +8,7 @@ sequenceDiagram
     participant CLI as ScopeBatchApp
     participant UC as ExecuteBatchUseCase
     participant BE as BatchExecutorService
-    participant AS as AuthorizationServerClient
+    participant AS as AuthorizationServerService
     CLI->>UC: executar(mode, inputs)
     UC->>BE: processar operações
     BE->>AS: associate/dissociate
@@ -29,7 +29,7 @@ Principais objetivos:
 - **App (CLI)**: interpreta argumentos, resolve inputs, inicia o batch.
 - **Use Cases**: orquestram a execução do batch.
 - **Services**: implementam processamento concorrente, auditoria e relatórios.
-- **Ports**: interface de `AuthorizationServerClient` para abstrair integrações.
+- **Ports**: interface de `AuthorizationServerService` para abstrair integrações.
 - **AS Clients**: implementações concretas (ex.: Mock, Axway).
 
 [Anterior](README.md) | [Índice](README.md) | [Próximo](architecture.md)

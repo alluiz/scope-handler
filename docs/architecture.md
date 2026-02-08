@@ -6,35 +6,35 @@
 ```mermaid
 flowchart TB
     CLI[cli] --> UseCases[api.usecases]
+    CLI --> MockClient[providers.mock.MockAuthorizationServerService]
     UseCases --> Services[api.services]
     Services --> Ports[api.ports]
-    Ports --> Axway[api.axway]
-    Ports --> Mock[mock]
+    Ports --> Axway[providers.axway]
     Services --> Domain[api.domain]
-    Axway --> AxwayDTOs[api.axway/dto]
-    Axway --> AxwayCache[api.axway/cache]
-    Axway --> AxwayLogger[api.axway/logger]
+    Axway --> AxwayDTOs[providers.axway/dto]
+    Axway --> AxwayCache[providers.axway/cache]
+    Axway --> AxwayLogger[providers.axway/logger]
 ```
 
 ## Diagrama de Classes
 ```mermaid
 classDiagram
-    class AuthorizationServerClient {
+    class AuthorizationServerService {
       +associateScope(clientId, scope)
       +dissociateScope(clientId, scope)
       +createScope(scope)
     }
+    class AxwayAuthorizationServerService
     class AxwayAuthorizationServerClient
-    class MockAuthorizationServerClient
     class AuthorizationServerFactory
     class BatchExecutorService
     class ExecuteBatchUseCase
     class OperationOutcome
-    AuthorizationServerClient <|.. AxwayAuthorizationServerClient
-    AuthorizationServerClient <|.. MockAuthorizationServerClient
-    AuthorizationServerFactory --> AuthorizationServerClient
+    AuthorizationServerService <|.. AxwayAuthorizationServerService
+    AxwayAuthorizationServerService --> AxwayAuthorizationServerClient
+    AuthorizationServerFactory --> AuthorizationServerService
     ExecuteBatchUseCase --> BatchExecutorService
-    BatchExecutorService --> AuthorizationServerClient
+    BatchExecutorService --> AuthorizationServerService
     BatchExecutorService --> OperationOutcome
 ```
 
@@ -42,8 +42,9 @@ classDiagram
 - **cli**: ponto de entrada e interação com usuário/ambiente (`com.company.scopehandler.cli`).
 - **api.usecases**: orquestração principal do batch.
 - **api.services**: regras de execução, paralelismo e auditoria.
-- **api.ports**: contratos de integração (ex.: `AuthorizationServerClient`).
-- **api.axway**: implementação concreta de AS (DTOs, cache, logger).
+- **api.ports**: contratos de integração (ex.: `AuthorizationServerService`).
+- **providers.axway**: implementação concreta de AS (DTOs, cache, logger).
+- **providers.mock**: implementação de AS mock para simulações locais.
 - **api.domain**: entidades e enums de status.
 
 ## Padrões aplicados

@@ -1,4 +1,4 @@
-package com.company.scopehandler.api.axway.dto;
+package com.company.scopehandler.providers.axway.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

@@ -1,4 +1,4 @@
-package com.company.scopehandler.api.axway;
+package com.company.scopehandler.providers.axway;
 
 import org.springframework.http.HttpRequest;
 import org.springframework.web.reactive.function.client.ClientRequest;
@@ -27,32 +27,32 @@ public final class AxwayRequestLogger implements AutoCloseable {
         }
     }
 
-    public void logRequest(ClientRequest request, String context) {
+    public void logRequest(ClientRequest request, java.util.Map<String, String> context) {
         writeLine("REQUEST " + Instant.now() + " " + request.method() + " " + request.url()
-                + " ctx=" + context);
+                + " ctx=" + formatContext(context));
     }
 
-    public void logRequest(HttpRequest request, String context) {
+    public void logRequest(HttpRequest request, java.util.Map<String, String> context) {
         writeLine("REQUEST " + Instant.now() + " " + request.getMethod() + " " + request.getURI()
-                + " ctx=" + context);
+                + " ctx=" + formatContext(context));
     }
 
-    public void logResponse(HttpRequest request, ClientResponse response, String body, String context) {
+    public void logResponse(HttpRequest request, ClientResponse response, String body, java.util.Map<String, String> context) {
         String snippet = body == null ? "" : body.length() > 200 ? body.substring(0, 200) + "..." : body;
         writeLine("RESPONSE " + Instant.now() + " " + request.getMethod() + " " + request.getURI()
                 + " status=" + response.rawStatusCode() + " body=" + snippet
-                + " ctx=" + context);
+                + " ctx=" + formatContext(context));
     }
 
-    public void logResponse(ClientRequest request, ClientResponse response, String body, String context) {
+    public void logResponse(ClientRequest request, ClientResponse response, String body, java.util.Map<String, String> context) {
         String snippet = body == null ? "" : body.length() > 200 ? body.substring(0, 200) + "..." : body;
         writeLine("RESPONSE " + Instant.now() + " " + request.method() + " " + request.url()
                 + " status=" + response.rawStatusCode() + " body=" + snippet
-                + " ctx=" + context);
+                + " ctx=" + formatContext(context));
     }
 
-    public void logException(String context, Throwable error) {
-        writeLine("EXCEPTION " + Instant.now() + " ctx=" + context + " error=" + error.getClass().getSimpleName()
+    public void logException(java.util.Map<String, String> context, Throwable error) {
+        writeLine("EXCEPTION " + Instant.now() + " ctx=" + formatContext(context) + " error=" + error.getClass().getSimpleName()
                 + " message=" + safeMessage(error));
     }
 
@@ -72,6 +72,22 @@ public final class AxwayRequestLogger implements AutoCloseable {
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write Axway log", e);
         }
+    }
+
+    private String formatContext(java.util.Map<String, String> context) {
+        if (context == null || context.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (var entry : context.entrySet()) {
+            if (!first) {
+                sb.append(' ');
+            }
+            sb.append(entry.getKey()).append('=').append(entry.getValue());
+            first = false;
+        }
+        return sb.toString();
     }
 
     public Path getFile() {

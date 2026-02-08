@@ -2,7 +2,7 @@ package com.company.scopehandler.api.ports;
 
 import com.company.scopehandler.api.domain.OperationOutcome;
 
-public interface AuthorizationServerClient {
+public interface AuthorizationServerService {
     OperationOutcome associateScope(String clientId, String scope);
 
     OperationOutcome dissociateScope(String clientId, String scope);

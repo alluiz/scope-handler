@@ -1,13 +1,11 @@
-package com.company.scopehandler.api.services;
+package com.company.scopehandler.providers.mock;
 
 import com.company.scopehandler.api.config.AuthorizationServerSettings;
-import com.company.scopehandler.api.domain.OperationOutcome;
-import com.company.scopehandler.api.ports.AuthorizationServerClient;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
-public final class MockAuthorizationServerClient implements AuthorizationServerClient {
+public final class MockAuthorizationServerClient {
     private static final int DEFAULT_LATENCY_MS = 100;
     private static final int ASSOCIATE_LATENCY_MS = 2000;
     private static final String ASSOCIATE_ENDPOINT = "/clients/{clientId}/scopes/{scope}";
@@ -19,25 +17,22 @@ public final class MockAuthorizationServerClient implements AuthorizationServerC
         this.settings = settings;
     }
 
-    @Override
-    public OperationOutcome associateScope(String clientId, String scope) {
+    public MockResponse associateScopeRpc(String clientId, String scope) {
         String url = buildUrl(ASSOCIATE_ENDPOINT, clientId, scope);
         return simulate("ASSOCIATE", url, clientId, scope, ASSOCIATE_LATENCY_MS);
     }
 
-    @Override
-    public OperationOutcome dissociateScope(String clientId, String scope) {
+    public MockResponse dissociateScopeRpc(String clientId, String scope) {
         String url = buildUrl(DISSOCIATE_ENDPOINT, clientId, scope);
         return simulate("DISSOCIATE", url, clientId, scope, DEFAULT_LATENCY_MS);
     }
 
-    @Override
-    public OperationOutcome createScope(String scope) {
+    public MockResponse createScopeRpc(String scope) {
         String url = buildUrl(CREATE_SCOPE_ENDPOINT, null, scope);
         return simulate("CREATE_SCOPE", url, null, scope, DEFAULT_LATENCY_MS);
     }
 
-    private OperationOutcome simulate(String action, String url, String clientId, String scope, int latencyMs) {
+    private MockResponse simulate(String action, String url, String clientId, String scope, int latencyMs) {
         String context = "[AS=" + settings.getName()
                 + " env=" + settings.getEnvironment()
                 + "] " + action
@@ -47,7 +42,7 @@ public final class MockAuthorizationServerClient implements AuthorizationServerC
                 + " user=" + settings.getUsername();
 
         sleep(latencyMs);
-        return OperationOutcome.ok(200, context + " status=200");
+        return new MockResponse(200, context + " status=200");
     }
 
     private void sleep(int latencyMs) {
@@ -85,5 +80,8 @@ public final class MockAuthorizationServerClient implements AuthorizationServerC
 
     private String valueOrDash(String value) {
         return value == null ? "-" : value;
+    }
+
+    public record MockResponse(int statusCode, String message) {
     }
 }

@@ -10,7 +10,7 @@
 ## SOLID
 - **SRP**: classes focadas em uma responsabilidade (ex.: logger, cache, client).
 - **OCP**: adicionar novos AS sem alterar o core.
-- **DIP**: integrações via `AuthorizationServerClient`.
+- **DIP**: integrações via `AuthorizationServerService`.
 
 ## Observabilidade
 - Logs estruturados.

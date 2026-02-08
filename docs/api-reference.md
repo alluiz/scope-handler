@@ -35,12 +35,24 @@ String env = "prod";
 AuthorizationServerSettings settings = AuthorizationServerSettings.from(config, asName, env);
 ```
 
-### 2) Criar AuthorizationServerClient
+### 2) Criar AuthorizationServerService
 ```java
-AuthorizationServerFactory factory = new AuthorizationServerFactory();
-Path cacheDir = Path.of("/var/lib/scope-handler/cache");
-AuthorizationServerClient client = factory.create(asName, env, config, cacheDir);
+AuthorizationServerFactory factory = AuthorizationServerFactory.builder()
+    .register("custom", () -> new CustomAuthorizationServerService(settings))
+    .build();
+AuthorizationServerService client = factory.create(asName);
 ```
+
+## Registro de AS customizado (Registration Pattern)
+```java
+AuthorizationServerFactory factory = AuthorizationServerFactory.builder()
+    .register("custom", () -> new CustomAuthorizationServerService(settings))
+    .build();
+```
+
+Observações:
+- O registry inicia vazio. Registre os AS desejados no builder.
+- AS como `axway` devem ser registrados pelo cliente da API.
 
 ### 3) Executar operações pontuais
 ```java
@@ -75,7 +87,7 @@ BatchReport report = useCase.execute(
 ## Exemplo em worker de fila
 ```java
 public void handleMessage(Message msg) {
-  AuthorizationServerClient client = factory.create("axway", "prod", config, cacheDir);
+  AuthorizationServerService client = factory.create("axway");
   OperationOutcome outcome = client.associateScope(msg.clientId(), msg.scope());
   // tratar OK / FAIL / SKIP
 }
@@ -84,7 +96,7 @@ public void handleMessage(Message msg) {
 ## Exemplo em Lambda (serverless)
 ```java
 public class Handler {
-  private final AuthorizationServerClient client;
+  private final AuthorizationServerService client;
 
   public Handler() {
     AppConfig config = AppConfig.builder()
@@ -92,7 +104,18 @@ public class Handler {
         .set("as.axway.auth.username", System.getenv("AS_USERNAME"))
         .set("as.axway.auth.password", System.getenv("AS_PASSWORD"))
         .build();
-    client = new AuthorizationServerFactory().create("axway", "prod", config, Path.of("/tmp/cache"));
+    AuthorizationServerSettings axwaySettings = AuthorizationServerSettings.from(config, "axway", "prod");
+AuthorizationServerFactory factory = AuthorizationServerFactory.builder()
+        .register("axway", () -> new AxwayAuthorizationServerService(
+            new AxwayAuthorizationServerClient(
+                axwaySettings,
+                Duration.ofSeconds(30),
+                new AxwayRequestLogger(Path.of("/tmp/cache/axway.log"))
+            ),
+            new AxwayCacheStore(Path.of("/tmp/cache/axway.json"), new ObjectMapper())
+        ))
+        .build();
+    client = factory.create("axway");
   }
 
   public String handle(Request input) {
@@ -103,7 +126,7 @@ public class Handler {
 ```
 
 ## Boas práticas de integração
-- Reutilize o `AuthorizationServerClient` entre chamadas quando possível.
+- Reutilize o `AuthorizationServerService` entre chamadas quando possível.
 - Use cache em disco quando a execução puder ser interrompida.
 - Configure credenciais por arquivo ou segredo gerenciado.
 - Em serverless, use `/tmp` para cache/logs.

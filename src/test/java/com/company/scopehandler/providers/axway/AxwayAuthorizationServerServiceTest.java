@@ -1,6 +1,6 @@
-package com.company.scopehandler.api.axway;
+package com.company.scopehandler.providers.axway;
 
-import com.company.scopehandler.api.axway.cache.AxwayCacheStore;
+import com.company.scopehandler.providers.axway.cache.AxwayCacheStore;
 import com.company.scopehandler.api.config.AuthorizationServerSettings;
 import com.company.scopehandler.api.domain.OperationOutcome;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,7 +21,7 @@ import java.util.Base64;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class AxwayAuthorizationServerClientTest {
+class AxwayAuthorizationServerServiceTest {
 
     private MockWebServer server;
 
@@ -42,11 +42,14 @@ class AxwayAuthorizationServerClientTest {
                 .whenGet("/api/portal/v1.2/applications/oauthclient/client-1", okJson("{\"id\":\"app-1\"}"))
                 .whenPost("/api/portal/v1.2/applications/app-1/scope", conflictJson("conflict")));
 
-        AxwayAuthorizationServerClient client = new AxwayAuthorizationServerClient(
+        AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(
                 settings(server.url("/").toString()),
-                new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
                 Duration.ofSeconds(5),
                 new AxwayRequestLogger(tempDir.resolve("axway.log"))
+        );
+        AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
+                rpcClient,
+                new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper())
         );
 
         OperationOutcome outcome = client.associateScope("client-1", "scope-1");
@@ -70,11 +73,14 @@ class AxwayAuthorizationServerClientTest {
                 .whenGet("/api/portal/v1.2/applications/oauthclient/client-1", okJson("{\"id\":\"app-1\"}"))
                 .whenGet("/api/portal/v1.2/applications/app-1/scope", okJson("[]")));
 
-        AxwayAuthorizationServerClient client = new AxwayAuthorizationServerClient(
+        AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(
                 settings(server.url("/").toString()),
-                new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
                 Duration.ofSeconds(5),
                 new AxwayRequestLogger(tempDir.resolve("axway.log"))
+        );
+        AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
+                rpcClient,
+                new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper())
         );
 
         OperationOutcome outcome = client.dissociateScope("client-1", "scope-1");
@@ -96,11 +102,14 @@ class AxwayAuthorizationServerClientTest {
                 .whenGet("/api/portal/v1.2/applications/app-1/scope", okJson("[{\"id\":\"scope-1-id\",\"scope\":\"scope-1\"}]"))
                 .whenDelete("/api/portal/v1.2/applications/app-1/scope/scope-1-id", okJson("")));
 
-        AxwayAuthorizationServerClient client = new AxwayAuthorizationServerClient(
+        AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(
                 settings(server.url("/").toString()),
-                new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
                 Duration.ofSeconds(5),
                 new AxwayRequestLogger(tempDir.resolve("axway.log"))
+        );
+        AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
+                rpcClient,
+                new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper())
         );
 
         OperationOutcome outcome = client.dissociateScope("client-1", "scope-1");
