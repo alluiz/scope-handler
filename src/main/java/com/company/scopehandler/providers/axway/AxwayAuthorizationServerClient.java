@@ -15,8 +15,10 @@ import reactor.core.publisher.Mono;
 public final class AxwayAuthorizationServerClient {
     private static final String BASE_PATH = "/api/portal/v1.2";
     private static final String APP_BY_CLIENT = BASE_PATH + "/applications/oauthclient/{clientId}";
+    private static final String APPS = BASE_PATH + "/applications";
     private static final String APP_SCOPES = BASE_PATH + "/applications/{id}/scope";
     private static final String APP_SCOPE_BY_ID = BASE_PATH + "/applications/{id}/scope/{scopeId}";
+    private static final String APP_OAUTH = BASE_PATH + "/applications/{id}/oauth";
 
     private final WebClient webClient;
     private final Duration requestTimeout;
@@ -52,6 +54,33 @@ public final class AxwayAuthorizationServerClient {
                     .block();
         } catch (Exception e) {
             throw new IllegalStateException("Failed to list application scopes", e);
+        }
+    }
+
+    public ApplicationDto[] listApplications(java.util.Map<String, String> context) {
+        try {
+            return webClient.get()
+                    .uri(APPS)
+                    .attribute(HttpWebClientFactory.CONTEXT_ATTR, context)
+                    .exchangeToMono(resp -> toDto(resp, ApplicationDto[].class, context))
+                    .timeout(requestTimeout)
+                    .block();
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to list applications", e);
+        }
+    }
+
+    public com.company.scopehandler.providers.axway.dto.OAuthClientDto[] listApplicationOAuthClients(String appId,
+                                                                                                    java.util.Map<String, String> context) {
+        try {
+            return webClient.get()
+                    .uri(APP_OAUTH.replace("{id}", urlEncode(appId)))
+                    .attribute(HttpWebClientFactory.CONTEXT_ATTR, context)
+                    .exchangeToMono(resp -> toDto(resp, com.company.scopehandler.providers.axway.dto.OAuthClientDto[].class, context))
+                    .timeout(requestTimeout)
+                    .block();
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to list application oauth clients", e);
         }
     }
 

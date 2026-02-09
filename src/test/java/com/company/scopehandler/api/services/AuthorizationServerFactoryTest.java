@@ -61,5 +61,15 @@ class AuthorizationServerFactoryTest {
         public OperationOutcome createScope(String scope) {
             return OperationOutcome.ok(200, "ok");
         }
+
+        @Override
+        public java.util.List<String> listScopes(String clientId) {
+            return java.util.List.of();
+        }
+
+        @Override
+        public java.util.List<String> listClients() {
+            return java.util.List.of();
+        }
     }
 }

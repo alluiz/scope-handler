@@ -7,9 +7,13 @@ import com.company.scopehandler.providers.axway.AxwayAuthorizationServerClient;
 import com.company.scopehandler.providers.axway.cache.AxwayCacheStore;
 import com.company.scopehandler.providers.axway.dto.ApplicationDto;
 import com.company.scopehandler.providers.axway.dto.OAuthAppScopeDto;
+import com.company.scopehandler.providers.axway.dto.OAuthClientDto;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class AxwayAuthorizationServerService implements AuthorizationServerService {
     private final AxwayAuthorizationServerClient client;
@@ -63,6 +67,51 @@ public final class AxwayAuthorizationServerService implements AuthorizationServe
     @Override
     public OperationOutcome createScope(String scope) {
         return OperationOutcome.ok(200, "createScope not required for axway");
+    }
+
+    @Override
+    public List<String> listScopes(String clientId) {
+        String appId = resolveApplicationId(clientId);
+        OAuthAppScopeDto[] scopes = client.listApplicationScopes(appId, new ContextBuilder()
+                .put("clientId", clientId)
+                .put("appId", appId)
+                .build());
+        if (scopes == null || scopes.length == 0) {
+            return List.of();
+        }
+        List<String> values = new java.util.ArrayList<>(scopes.length);
+        for (OAuthAppScopeDto item : scopes) {
+            if (item != null && item.getScope() != null && !item.getScope().isBlank()) {
+                values.add(item.getScope());
+            }
+        }
+        return values;
+    }
+
+    @Override
+    public List<String> listClients() {
+        ApplicationDto[] apps = client.listApplications(new ContextBuilder().build());
+        if (apps == null || apps.length == 0) {
+            return List.of();
+        }
+        Set<String> clients = new LinkedHashSet<>();
+        for (ApplicationDto app : apps) {
+            if (app == null || app.getId() == null || app.getId().isBlank()) {
+                continue;
+            }
+            OAuthClientDto[] oauthClients = client.listApplicationOAuthClients(app.getId(), new ContextBuilder()
+                    .put("appId", app.getId())
+                    .build());
+            if (oauthClients == null) {
+                continue;
+            }
+            for (OAuthClientDto oauthClient : oauthClients) {
+                if (oauthClient != null && oauthClient.getClientId() != null && !oauthClient.getClientId().isBlank()) {
+                    clients.add(oauthClient.getClientId());
+                }
+            }
+        }
+        return List.copyOf(clients);
     }
 
     private String resolveApplicationId(String clientId) {

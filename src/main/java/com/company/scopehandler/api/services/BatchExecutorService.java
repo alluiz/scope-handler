@@ -182,7 +182,8 @@ public final class BatchExecutorService {
     }
 
     private void logOperationStatus(OperationResult result) {
-        if (!debugEnabled) {
+        if (!debugEnabled && result.getMode() != com.company.scopehandler.api.domain.Mode.LIST
+                && result.getMode() != com.company.scopehandler.api.domain.Mode.FIND) {
             return;
         }
         System.out.println("Operacao #" + result.getSequence()

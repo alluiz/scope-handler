@@ -3,7 +3,8 @@ package com.company.scopehandler.api.domain;
 public enum Mode {
     ADD,
     REMOVE,
-    READ;
+    LIST,
+    FIND;
 
     public static Mode from(String value) {
         if (value == null) {
@@ -13,7 +14,8 @@ public enum Mode {
         return switch (normalized) {
             case "add", "associar", "associate" -> ADD;
             case "remove", "desassociar", "dissociate" -> REMOVE;
-            case "read", "ler" -> READ;
+            case "list", "listar" -> LIST;
+            case "find", "buscar" -> FIND;
             default -> throw new IllegalArgumentException("invalid mode: " + value);
         };
     }

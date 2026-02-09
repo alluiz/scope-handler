@@ -25,7 +25,7 @@ import java.util.concurrent.Callable;
 )
 public final class ScopeBatchApp implements Callable<Integer> {
 
-    @Option(names = "--mode", required = true, description = "Modo: add|remove|read")
+    @Option(names = "--mode", required = true, description = "Modo: add|remove|list|find")
     private String mode;
 
     @Option(names = "--clients", split = ",", description = "Lista de clients separados por virgula")
@@ -82,6 +82,9 @@ public final class ScopeBatchApp implements Callable<Integer> {
     @Option(names = "--debug", description = "Habilita logs detalhados por operacao")
     private boolean debug;
 
+    @Option(names = "--find-mode", description = "Modo do find: and|or", defaultValue = "and")
+    private String findMode;
+
     @Option(names = "--ignore-cache", description = "Ignora cache de execucao anterior")
     private boolean ignoreCache;
 
@@ -129,8 +132,21 @@ public final class ScopeBatchApp implements Callable<Integer> {
                 auditDir
         );
         InputResolverService inputResolver = new InputResolverService();
-        List<String> resolvedClients = inputResolver.resolve(clients, clientsFile);
-        List<String> resolvedScopes = inputResolver.resolve(scopes, scopesFile);
+        List<String> resolvedClients;
+        List<String> resolvedScopes;
+        List<String> findScopes = java.util.List.of();
+        if (parsedMode == Mode.LIST) {
+            resolvedClients = inputResolver.resolve(clients, clientsFile);
+            resolvedScopes = java.util.List.of("");
+        } else if (parsedMode == Mode.FIND) {
+            resolvedClients = java.util.List.of("");
+            findScopes = inputResolver.resolve(scopes, scopesFile);
+            resolvedScopes = java.util.List.of("");
+        } else {
+            resolvedClients = inputResolver.resolve(clients, clientsFile);
+            resolvedScopes = inputResolver.resolve(scopes, scopesFile);
+            findScopes = resolvedScopes;
+        }
 
         int resolvedThreshold = threshold != null ? threshold : config.getInt("batch.threads.threshold", 500);
         int resolvedThreads = threads != null ? threads : config.getInt("batch.threads.max", 8);
@@ -140,7 +156,10 @@ public final class ScopeBatchApp implements Callable<Integer> {
                 new AxwayClientFactory()
         ).build(config, resolvedEnv, resolvedAuditDir.resolve("cache"), debug);
         AuthorizationServerService asClient = registry.create(resolvedAsName);
-        ModeStrategy strategy = new ModeStrategyFactory().create(parsedMode, asClient, createScope);
+        com.company.scopehandler.api.domain.FindMatchMode matchMode =
+                com.company.scopehandler.api.domain.FindMatchMode.from(findMode);
+        ModeStrategy strategy = new ModeStrategyFactory()
+                .create(parsedMode, asClient, createScope, findScopes, matchMode);
 
         BatchRunInput input = new BatchRunInput(
                 resolvedClients,
