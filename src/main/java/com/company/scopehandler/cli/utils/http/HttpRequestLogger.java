@@ -51,13 +51,13 @@ public final class HttpRequestLogger implements AutoCloseable {
     public void logResponse(HttpRequest request, ClientResponse response, String body, Map<String, String> context) {
         String snippet = body == null ? "" : body.length() > 200 ? body.substring(0, 200) + "..." : body;
         logger.info("RESPONSE {} {} {} status={} body={} ctx={}", Instant.now(), request.getMethod(), request.getURI(),
-                response.rawStatusCode(), snippet, formatContext(context));
+                response.statusCode(), snippet, formatContext(context));
     }
 
     public void logResponse(ClientRequest request, ClientResponse response, String body, Map<String, String> context) {
         String snippet = body == null ? "" : body.length() > 200 ? body.substring(0, 200) + "..." : body;
         logger.info("RESPONSE {} {} {} status={} body={} ctx={}", Instant.now(), request.method(), request.url(),
-                response.rawStatusCode(), snippet, formatContext(context));
+                response.statusCode(), snippet, formatContext(context));
     }
 
     public void logException(Map<String, String> context, Throwable error) {
@@ -111,13 +111,14 @@ public final class HttpRequestLogger implements AutoCloseable {
                 .build();
 
         FileAppender fileAppender = FileAppender.newBuilder()
-                .withFileName(file.toAbsolutePath().toString())
-                .withName(loggerName + "-file")
-                .withLayout(layout)
+                .setName(loggerName + "-file")
+                .setLayout(layout)
+                .setImmediateFlush(true)
                 .withAppend(true)
-                .withImmediateFlush(true)
+                .withFileName(file.toAbsolutePath().toString())
                 .setConfiguration(config)
                 .build();
+                
         fileAppender.start();
 
         LoggerConfig loggerConfig = new LoggerConfig(loggerName, Level.INFO, false);
