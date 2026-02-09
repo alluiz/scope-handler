@@ -15,6 +15,8 @@ public final class AxwayClientFactory {
         String asName = "axway";
         AuthorizationServerSettings settings = AuthorizationServerSettings.from(config, asName, environment);
         AxwayCacheStore cacheStore = buildAxwayCache(cacheDir, asName, environment);
+        com.company.scopehandler.providers.axway.cache.AxwayScopeCacheStore scopeCacheStore =
+                buildAxwayScopeCache(cacheDir, asName, environment);
         Duration timeout = buildAxwayTimeout(config, asName);
         HttpRequestLogger logger = buildAxwayLogger(config, cacheDir, asName, environment, debug);
         String baseUrl = normalizeBaseUrl(settings.getBaseUrl());
@@ -26,12 +28,22 @@ public final class AxwayClientFactory {
                 .defaultHeader("Accept", "application/json")
                 .build();
         AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(webClient, timeout);
-        return new AxwayAuthorizationServerService(rpcClient, cacheStore);
+        return new AxwayAuthorizationServerService(rpcClient, cacheStore, scopeCacheStore);
     }
 
     private AxwayCacheStore buildAxwayCache(Path cacheDir, String asName, String environment) {
         Path file = cacheDir.resolve("axway-cache-" + asName + "-" + environment + ".json");
         return new AxwayCacheStore(file, new com.fasterxml.jackson.databind.ObjectMapper());
+    }
+
+    private com.company.scopehandler.providers.axway.cache.AxwayScopeCacheStore buildAxwayScopeCache(Path cacheDir,
+                                                                                                      String asName,
+                                                                                                      String environment) {
+        Path file = cacheDir.resolve("axway-scopes-" + asName + "-" + environment + ".json");
+        return new com.company.scopehandler.providers.axway.cache.AxwayScopeCacheStore(
+                file,
+                new com.fasterxml.jackson.databind.ObjectMapper()
+        );
     }
 
     private Duration buildAxwayTimeout(AppConfig config, String asName) {

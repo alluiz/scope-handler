@@ -5,6 +5,7 @@ import com.company.scopehandler.api.ports.AuthorizationServerService;
 import com.company.scopehandler.cli.utils.ContextBuilder;
 import com.company.scopehandler.providers.axway.AxwayAuthorizationServerClient;
 import com.company.scopehandler.providers.axway.cache.AxwayCacheStore;
+import com.company.scopehandler.providers.axway.cache.AxwayScopeCacheStore;
 import com.company.scopehandler.providers.axway.dto.ApplicationDto;
 import com.company.scopehandler.providers.axway.dto.OAuthAppScopeDto;
 import com.company.scopehandler.providers.axway.dto.OAuthClientDto;
@@ -18,10 +19,15 @@ import java.util.Set;
 public final class AxwayAuthorizationServerService implements AuthorizationServerService {
     private final AxwayAuthorizationServerClient client;
     private final AxwayCacheStore cacheStore;
+    private final AxwayScopeCacheStore scopeCacheStore;
+    private static final long SCOPE_TTL_MS = 24L * 60L * 60L * 1000L;
 
-    public AxwayAuthorizationServerService(AxwayAuthorizationServerClient client, AxwayCacheStore cacheStore) {
+    public AxwayAuthorizationServerService(AxwayAuthorizationServerClient client,
+                                           AxwayCacheStore cacheStore,
+                                           AxwayScopeCacheStore scopeCacheStore) {
         this.client = client;
         this.cacheStore = cacheStore;
+        this.scopeCacheStore = scopeCacheStore;
     }
 
     @Override
@@ -72,20 +78,7 @@ public final class AxwayAuthorizationServerService implements AuthorizationServe
     @Override
     public List<String> listScopes(String clientId) {
         String appId = resolveApplicationId(clientId);
-        OAuthAppScopeDto[] scopes = client.listApplicationScopes(appId, new ContextBuilder()
-                .put("clientId", clientId)
-                .put("appId", appId)
-                .build());
-        if (scopes == null || scopes.length == 0) {
-            return List.of();
-        }
-        List<String> values = new java.util.ArrayList<>(scopes.length);
-        for (OAuthAppScopeDto item : scopes) {
-            if (item != null && item.getScope() != null && !item.getScope().isBlank()) {
-                values.add(item.getScope());
-            }
-        }
-        return values;
+        return loadAppScopes(appId);
     }
 
     @Override
@@ -99,19 +92,31 @@ public final class AxwayAuthorizationServerService implements AuthorizationServe
             if (app == null || app.getId() == null || app.getId().isBlank()) {
                 continue;
             }
-            OAuthClientDto[] oauthClients = client.listApplicationOAuthClients(app.getId(), new ContextBuilder()
-                    .put("appId", app.getId())
-                    .build());
-            if (oauthClients == null) {
-                continue;
-            }
-            for (OAuthClientDto oauthClient : oauthClients) {
-                if (oauthClient != null && oauthClient.getClientId() != null && !oauthClient.getClientId().isBlank()) {
-                    clients.add(oauthClient.getClientId());
-                }
-            }
+            clients.addAll(listClientsForApp(app.getId()));
         }
         return List.copyOf(clients);
+    }
+
+    @Override
+    public List<String> findClientsByScopes(List<String> scopes,
+                                            com.company.scopehandler.api.domain.FindMatchMode matchMode) {
+        ApplicationDto[] apps = client.listApplications(new ContextBuilder().build());
+        if (apps == null || apps.length == 0) {
+            return List.of();
+        }
+        Set<String> matches = new LinkedHashSet<>();
+        for (ApplicationDto app : apps) {
+            if (app == null || app.getId() == null || app.getId().isBlank()) {
+                continue;
+            }
+            String appId = app.getId();
+            List<String> appScopes = loadAppScopes(appId);
+            if (!matchesScopes(appScopes, scopes, matchMode)) {
+                continue;
+            }
+            matches.addAll(listClientsForApp(appId));
+        }
+        return List.copyOf(matches);
     }
 
     private String resolveApplicationId(String clientId) {
@@ -152,6 +157,64 @@ public final class AxwayAuthorizationServerService implements AuthorizationServe
             return OperationOutcome.ok(statusCode, message);
         }
         return OperationOutcome.fail(statusCode, message);
+    }
+
+    private List<String> loadAppScopes(String appId) {
+        List<String> cached = scopeCacheStore != null ? scopeCacheStore.getScopes(appId, SCOPE_TTL_MS) : null;
+        if (cached != null) {
+            return cached;
+        }
+        OAuthAppScopeDto[] scopes = client.listApplicationScopes(appId, new ContextBuilder()
+                .put("appId", appId)
+                .build());
+        List<String> values = new java.util.ArrayList<>();
+        if (scopes != null) {
+            for (OAuthAppScopeDto item : scopes) {
+                if (item != null && item.getScope() != null && !item.getScope().isBlank()) {
+                    values.add(item.getScope());
+                }
+            }
+        }
+        if (scopeCacheStore != null) {
+            scopeCacheStore.putScopes(appId, values);
+        }
+        return values;
+    }
+
+    private List<String> listClientsForApp(String appId) {
+        OAuthClientDto[] oauthClients = client.listApplicationOAuthClients(appId, new ContextBuilder()
+                .put("appId", appId)
+                .build());
+        if (oauthClients == null || oauthClients.length == 0) {
+            return List.of();
+        }
+        List<String> clients = new java.util.ArrayList<>();
+        for (OAuthClientDto oauthClient : oauthClients) {
+            if (oauthClient != null && oauthClient.getClientId() != null && !oauthClient.getClientId().isBlank()) {
+                clients.add(oauthClient.getClientId());
+            }
+        }
+        return clients;
+    }
+
+    private boolean matchesScopes(List<String> appScopes,
+                                  List<String> expectedScopes,
+                                  com.company.scopehandler.api.domain.FindMatchMode matchMode) {
+        if (expectedScopes == null || expectedScopes.isEmpty()) {
+            return true;
+        }
+        if (appScopes == null || appScopes.isEmpty()) {
+            return false;
+        }
+        if (matchMode == com.company.scopehandler.api.domain.FindMatchMode.OR) {
+            for (String scope : expectedScopes) {
+                if (appScopes.contains(scope)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return appScopes.containsAll(expectedScopes);
     }
 
     // ContextBuilder is now used to avoid varargs noise.

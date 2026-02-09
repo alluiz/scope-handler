@@ -71,5 +71,11 @@ class AuthorizationServerFactoryTest {
         public java.util.List<String> listClients() {
             return java.util.List.of();
         }
+
+        @Override
+        public java.util.List<String> findClientsByScopes(java.util.List<String> scopes,
+                                                          com.company.scopehandler.api.domain.FindMatchMode matchMode) {
+            return java.util.List.of();
+        }
     }
 }

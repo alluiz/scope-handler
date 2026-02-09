@@ -12,4 +12,7 @@ public interface AuthorizationServerService {
     java.util.List<String> listScopes(String clientId);
 
     java.util.List<String> listClients();
+
+    java.util.List<String> findClientsByScopes(java.util.List<String> scopes,
+                                               com.company.scopehandler.api.domain.FindMatchMode matchMode);
 }

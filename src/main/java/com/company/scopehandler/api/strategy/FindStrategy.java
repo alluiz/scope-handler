@@ -7,7 +7,6 @@ import com.company.scopehandler.api.domain.OperationResult;
 import com.company.scopehandler.api.domain.OperationStatus;
 import com.company.scopehandler.api.ports.AuthorizationServerService;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public final class FindStrategy implements ModeStrategy {
@@ -25,14 +24,7 @@ public final class FindStrategy implements ModeStrategy {
     public OperationResult execute(Operation operation) {
         long startedAt = System.currentTimeMillis();
         try {
-            List<String> clients = client.listClients();
-            List<String> matches = new ArrayList<>();
-            for (String clientId : clients) {
-                List<String> clientScopes = client.listScopes(clientId);
-                if (matches(clientScopes)) {
-                    matches.add(clientId);
-                }
-            }
+            List<String> matches = client.findClientsByScopes(scopes, matchMode);
             long duration = System.currentTimeMillis() - startedAt;
             String message = "find[ok] match=" + matchMode.name().toLowerCase()
                     + " scopes=" + String.join(",", scopes)
@@ -72,23 +64,5 @@ public final class FindStrategy implements ModeStrategy {
     @Override
     public Mode getMode() {
         return Mode.FIND;
-    }
-
-    private boolean matches(List<String> clientScopes) {
-        if (scopes.isEmpty()) {
-            return true;
-        }
-        if (clientScopes == null || clientScopes.isEmpty()) {
-            return false;
-        }
-        if (matchMode == FindMatchMode.OR) {
-            for (String scope : scopes) {
-                if (clientScopes.contains(scope)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        return clientScopes.containsAll(scopes);
     }
 }

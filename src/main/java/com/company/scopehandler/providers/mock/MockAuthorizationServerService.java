@@ -39,6 +39,12 @@ public final class MockAuthorizationServerService implements AuthorizationServer
         return java.util.List.of("mock-client-1", "mock-client-2", "mock-client-3");
     }
 
+    @Override
+    public java.util.List<String> findClientsByScopes(java.util.List<String> scopes,
+                                                      com.company.scopehandler.api.domain.FindMatchMode matchMode) {
+        return listClients();
+    }
+
     private OperationOutcome toOutcome(String op, MockAuthorizationServerClient.MockResponse response) {
         int statusCode = response.statusCode();
         String message = op + " status=" + statusCode + " " + response.message();
