@@ -9,25 +9,33 @@ import com.company.scopehandler.providers.axway.cache.AxwayScopeCacheStore;
 import com.company.scopehandler.providers.axway.dto.ApplicationDto;
 import com.company.scopehandler.providers.axway.dto.OAuthAppScopeDto;
 import com.company.scopehandler.providers.axway.dto.OAuthClientDto;
+import com.company.scopehandler.api.services.TaskIterable;
 
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Objects;
 
 public final class AxwayAuthorizationServerService implements AuthorizationServerService {
     private final AxwayAuthorizationServerClient client;
     private final AxwayCacheStore cacheStore;
     private final AxwayScopeCacheStore scopeCacheStore;
+    private final com.company.scopehandler.api.services.TaskExecutorService taskExecutor;
+    private final int findThreads;
     private static final long SCOPE_TTL_MS = 24L * 60L * 60L * 1000L;
 
     public AxwayAuthorizationServerService(AxwayAuthorizationServerClient client,
                                            AxwayCacheStore cacheStore,
-                                           AxwayScopeCacheStore scopeCacheStore) {
+                                           AxwayScopeCacheStore scopeCacheStore,
+                                           com.company.scopehandler.api.services.TaskExecutorService taskExecutor,
+                                           int findThreads) {
         this.client = client;
         this.cacheStore = cacheStore;
         this.scopeCacheStore = scopeCacheStore;
+        this.taskExecutor = Objects.requireNonNull(taskExecutor, "taskExecutor");
+        this.findThreads = Math.max(1, findThreads);
     }
 
     @Override
@@ -104,18 +112,34 @@ public final class AxwayAuthorizationServerService implements AuthorizationServe
         if (apps == null || apps.length == 0) {
             return List.of();
         }
-        Set<String> matches = new LinkedHashSet<>();
+        List<String> appIds = new java.util.ArrayList<>();
         for (ApplicationDto app : apps) {
-            if (app == null || app.getId() == null || app.getId().isBlank()) {
-                continue;
+            if (app != null && app.getId() != null && !app.getId().isBlank()) {
+                appIds.add(app.getId());
             }
-            String appId = app.getId();
-            List<String> appScopes = loadAppScopes(appId);
-            if (!matchesScopes(appScopes, scopes, matchMode)) {
-                continue;
-            }
-            matches.addAll(listClientsForApp(appId));
         }
+        if (appIds.isEmpty()) {
+            return List.of();
+        }
+
+        Iterable<java.util.concurrent.Callable<List<String>>> tasks =
+                new TaskIterable<>(appIds, appId -> () -> {
+                    List<String> appScopes = loadAppScopes(appId);
+                    if (!matchesScopes(appScopes, scopes, matchMode)) {
+                        return List.of();
+                    }
+                    return listClientsForApp(appId);
+                });
+
+        java.util.Set<String> matches = java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
+        int threads = Math.min(appIds.size(), Math.max(1, findThreads));
+        taskExecutor.execute(tasks, threads, clients -> {
+            if (clients != null && !clients.isEmpty()) {
+                matches.addAll(clients);
+            }
+        }, error -> {
+            // ignore task failures
+        });
         return List.copyOf(matches);
     }
 

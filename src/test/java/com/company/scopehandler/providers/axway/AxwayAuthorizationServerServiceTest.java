@@ -59,7 +59,9 @@ class AxwayAuthorizationServerServiceTest {
         AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
                 rpcClient,
                 new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
-                new AxwayScopeCacheStore(tempDir.resolve("axway-scopes.json"), new com.fasterxml.jackson.databind.ObjectMapper())
+                new AxwayScopeCacheStore(tempDir.resolve("axway-scopes.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
+                new com.company.scopehandler.api.services.TaskExecutorService(),
+                2
         );
 
         OperationOutcome outcome = client.associateScope("client-1", "scope-1");
@@ -97,7 +99,9 @@ class AxwayAuthorizationServerServiceTest {
         AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
                 rpcClient,
                 new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
-                new AxwayScopeCacheStore(tempDir.resolve("axway-scopes.json"), new com.fasterxml.jackson.databind.ObjectMapper())
+                new AxwayScopeCacheStore(tempDir.resolve("axway-scopes.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
+                new com.company.scopehandler.api.services.TaskExecutorService(),
+                2
         );
 
         OperationOutcome outcome = client.dissociateScope("client-1", "scope-1");
@@ -133,7 +137,9 @@ class AxwayAuthorizationServerServiceTest {
         AxwayAuthorizationServerService client = new AxwayAuthorizationServerService(
                 rpcClient,
                 new AxwayCacheStore(tempDir.resolve("axway.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
-                new AxwayScopeCacheStore(tempDir.resolve("axway-scopes.json"), new com.fasterxml.jackson.databind.ObjectMapper())
+                new AxwayScopeCacheStore(tempDir.resolve("axway-scopes.json"), new com.fasterxml.jackson.databind.ObjectMapper()),
+                new com.company.scopehandler.api.services.TaskExecutorService(),
+                2
         );
 
         OperationOutcome outcome = client.dissociateScope("client-1", "scope-1");

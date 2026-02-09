@@ -17,6 +17,7 @@ public final class AxwayClientFactory {
         AxwayCacheStore cacheStore = buildAxwayCache(cacheDir, asName, environment);
         com.company.scopehandler.providers.axway.cache.AxwayScopeCacheStore scopeCacheStore =
                 buildAxwayScopeCache(cacheDir, asName, environment);
+        int findThreads = config.getInt("batch.threads.max", 8);
         Duration timeout = buildAxwayTimeout(config, asName);
         HttpRequestLogger logger = buildAxwayLogger(config, cacheDir, asName, environment, debug);
         String baseUrl = normalizeBaseUrl(settings.getBaseUrl());
@@ -28,7 +29,13 @@ public final class AxwayClientFactory {
                 .defaultHeader("Accept", "application/json")
                 .build();
         AxwayAuthorizationServerClient rpcClient = new AxwayAuthorizationServerClient(webClient, timeout);
-        return new AxwayAuthorizationServerService(rpcClient, cacheStore, scopeCacheStore);
+        return new AxwayAuthorizationServerService(
+                rpcClient,
+                cacheStore,
+                scopeCacheStore,
+                new com.company.scopehandler.api.services.TaskExecutorService(),
+                findThreads
+        );
     }
 
     private AxwayCacheStore buildAxwayCache(Path cacheDir, String asName, String environment) {
